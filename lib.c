@@ -175,6 +175,36 @@ int esFecha(char *str)
     return 1;
 }
 
+int esTexto(char *str)
+{
+    // Verificar si el valor está vacío
+    if (str == NULL || str[0] == '\0')
+    {
+        return 0; // No es texto si está vacío
+    }
+
+    // Verificar si es numérico
+    if (esNumerico(str))
+    {
+        return 0; // No es texto si es numérico
+    }
+
+    // Verificar si es fecha
+    if (esFecha(str))
+    {
+        return 0; // No es texto si es una fecha válida
+    }
+
+    // Permitir letras, dígitos, y caracteres comunes como guiones y espacios
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (!isalnum(str[i]) && !isspace(str[i]) && str[i] != '_') {
+            return 0; // No es texto si contiene caracteres no permitidos
+        }
+    }
+
+    return 1; // es texto valido
+}
+
 Dataframe *cargarCSV(char *nombreFichero)
 {
     FILE *archivo = fopen(nombreFichero, "r");
@@ -282,18 +312,24 @@ Dataframe *cargarCSV(char *nombreFichero)
                 }
                 else if (df->columnas[i].tipo == TEXTO)
                 {
-                    // Para TEXTO, validar que no sea numérico ni fecha
-                    if (!esNumerico(inicio) && !esFecha(inicio))
+                    // Limpiar el valor antes de validar
+                    inicio[strcspn(inicio, "\r\n")] = '\0';
+                    while (*inicio == ' ')
+                        inicio++;
+
+                    printf("Validando como TEXTO: '%s' en columna '%s'\n", inicio, df->columnas[i].nombre);
+                    if (esTexto(inicio))
                     {
                         ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
                         df->columnas[i].esNulo[numFilas] = 0;
                     }
                     else
                     {
-                        df->columnas[i].esNulo[numFilas] = 1; // Tipo incorrecto
+                        df->columnas[i].esNulo[numFilas] = 1;
                         printf("\033[0;31mAdvertencia: El valor '%s' en la columna '%s' no coincide con el tipo TEXTO y será marcado como nulo.\033[0m\n", inicio, df->columnas[i].nombre);
                     }
                 }
+
                 else
                 {
                     df->columnas[i].esNulo[numFilas] = 1; // Tipo incorrecto
