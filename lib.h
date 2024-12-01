@@ -50,6 +50,18 @@ typedef struct
     Nodo *primero;
 } Lista;
 
+// FUNCIONES PARA EL FLUJO DE DATOS (MAIN)
+void mostrarPromptDataframe();        // Mostrar el prompt basado en el estado actual
+void inicializarPrograma();           // Inicializar el programa y mostrar información inicial
+void manejarComandoLoad(const char *argumento); // Manejar el comando 'load'
+void manejarComandoView(const char *argumento); // Manejar el comando 'view'
+void manejarComandoMeta();            // Manejar el comando 'meta'
+void manejarComandoDesconocido();     // Manejar comandos no válidos
+void finalizarPrograma();             // Liberar memoria y finalizar el programa
+void ejecutarCicloComandos();         // Ciclo principal para manejar comandos
+
+
+// FUNCIONES AUXILIARES
 void liberarColumna(Columna *columna);
 void liberarDataframe(Dataframe *df);
 void liberarMemoriaLista();
