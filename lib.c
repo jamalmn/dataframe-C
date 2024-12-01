@@ -320,7 +320,6 @@ Dataframe *cargarCSV(char *nombreFichero)
     return df;
 }
 
-
 // funcion para mostrar las primeras 'n' filas del dataframe
 void viewDataframe(Dataframe *df, int n)
 {
@@ -334,7 +333,8 @@ void viewDataframe(Dataframe *df, int n)
         n = df->numFilas;
 
     // Mostrar los nombres de las columnas
-    for (int i = 0; i < df->numColumnas; i++) {
+    for (int i = 0; i < df->numColumnas; i++)
+    {
         printf("\033[0;32m%s\t", df->columnas[i].nombre);
     }
     printf("\033[0m\n");
