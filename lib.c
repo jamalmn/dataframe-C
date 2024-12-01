@@ -5,6 +5,123 @@
 #include <time.h>
 #include "lib.h"
 
+// *******************************************************
+// *******************************************************
+// ******* FUNCIONES PARA EL FLUJO DE DATOS (MAIN)********
+// *******************************************************
+
+// Puntero global al Dataframe activo. Inicialmente es NULL hasta que se cargue un dataframe.
+// Esto permite acceder al dataframe actualmente en uso en todo el programa.
+Dataframe *dataframeActivo = NULL;
+
+// Índice del dataframe activo. Inicialmente es -1, indicando que no hay dataframe cargado.
+// A medida que se cargan nuevos dataframes, este índice se incrementa para hacer referencia al dataframe actual.
+int indiceDataframe = -1;
+
+// Mostrar el prompt personalizado basado en el estado del programa
+void mostrarPromptDataframe() {
+    if (dataframeActivo != NULL) {
+        printf("[df%d: %d filas, %d columnas]:> ", indiceDataframe, dataframeActivo->numFilas, dataframeActivo->numColumnas);
+    } else {
+        printf("[?]:> ");
+    }
+    fflush(stdout);
+}
+
+// Inicialización del programa
+void inicializarPrograma() {
+    printf("=== PROGRAMA DE MANEJO DE DATAFRAMES ===\n\n");
+    printf("DATOS DEL ALUMNO:\n");
+    printf("NOMBRE + APELLIDOS: Jamal Menchi Hajji\n");
+    printf("CORREO: jamal.menchi@goumh.umh.es\n\n");
+}
+
+// Manejar el comando "load"
+void manejarComandoLoad(const char *argumento) {
+    char nombreFichero[100];
+    if (sscanf(argumento, "%s", nombreFichero) == 1) {
+        dataframeActivo = cargarCSV(nombreFichero);
+        if (dataframeActivo) {
+            printf("\033[0;32mArchivo %s cargado correctamente.\033[0m\n", nombreFichero);
+            indiceDataframe++;
+        } else {
+            printf("\033[0;31mError al cargar el archivo %s.\033[0m\n", nombreFichero);
+        }
+    } else {
+        printf("\033[0;31mDebe especificar un nombre de fichero.\033[0m\n");
+    }
+}
+
+// Manejar el comando "view"
+void manejarComandoView(const char *argumento) {
+    int numFilas = 10;
+    if (dataframeActivo != NULL) {
+        if (sscanf(argumento, "%d", &numFilas) == 1) {
+            if (numFilas <= 0) {
+                printf("\033[0;31mEl número de filas debe ser mayor que 0.\033[0m\n");
+            } else {
+                viewDataframe(dataframeActivo, numFilas);
+            }
+        } else {
+            viewDataframe(dataframeActivo, 10); // Valor predeterminado
+        }
+    } else {
+        printf("\033[0;31mNo hay un dataframe activo para mostrar.\033[0m\n");
+    }
+}
+
+// Manejar el comando "meta"
+void manejarComandoMeta() {
+    if (dataframeActivo) {
+        mostrarMetadatos(dataframeActivo);
+    } else {
+        printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
+    }
+}
+
+// Manejar comandos desconocidos
+void manejarComandoDesconocido() {
+    printf("\033[0;31mComando no válido.\033[0m\n");
+}
+
+// Liberar memoria y finalizar
+void finalizarPrograma() {
+    printf("\033[0;32mEXIT PROGRAM\033[0m\n");
+    liberarMemoria();
+}
+
+// Ciclo principal para manejar los comandos del usuario
+void ejecutarCicloComandos() {
+    char comando[256];
+    while (1) {
+        mostrarPromptDataframe();
+
+        // Leer comando del usuario
+        fgets(comando, sizeof(comando), stdin);
+
+        // Eliminar el salto de línea '\n' al final del comando
+        comando[strcspn(comando, "\n")] = 0;
+
+        // Manejar comandos específicos
+        if (strcmp(comando, "quit") == 0) {
+            finalizarPrograma();
+            break;
+        } else if (strncmp(comando, "load", 4) == 0) {
+            manejarComandoLoad(comando + 5);
+        } else if (strncmp(comando, "view", 4) == 0) {
+            manejarComandoView(comando + 5);
+        } else if (strcmp(comando, "meta") == 0) {
+            manejarComandoMeta();
+        } else {
+            manejarComandoDesconocido();
+        }
+    }
+}
+
+// ********************************************************
+// FUNCIONES PARA LA LOGICA DE LOS COMANDOS ***************
+// ********************************************************
+
 // estructura global para manejar la lista de dataframes
 Lista listaDataframes = {0, NULL};
 
