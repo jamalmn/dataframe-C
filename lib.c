@@ -175,7 +175,6 @@ int esFecha(char *str)
     return 1;
 }
 
-// funcion leer csv y cargarlo en un dataframe
 Dataframe *cargarCSV(char *nombreFichero)
 {
     FILE *archivo = fopen(nombreFichero, "r");
@@ -189,9 +188,8 @@ Dataframe *cargarCSV(char *nombreFichero)
     int numColumnas = 0;
     Dataframe *df = (Dataframe *)malloc(sizeof(Dataframe));
 
-    // leer 1a col para obtener los nombres de las columnas
+    // Leer 1a fila para obtener el número de columnas
     long posicion = ftell(archivo);
-
     if (fgets(buffer, sizeof(buffer), archivo))
     {
         char *token = strtok(buffer, ",");
@@ -250,13 +248,13 @@ Dataframe *cargarCSV(char *nombreFichero)
 
     fseek(archivo, posicion, SEEK_SET);
 
+    // Procesar el resto de las filas
     while (fgets(buffer, sizeof(buffer), archivo))
     {
         int i = 0;
         char *inicio = buffer;
         char *fin;
 
-        // Procesar cada columna de la fila
         while ((fin = strchr(inicio, ',')) || *inicio != '\n')
         {
             if (fin)
@@ -271,14 +269,35 @@ Dataframe *cargarCSV(char *nombreFichero)
             }
             else
             {
-                df->columnas[i].esNulo[numFilas] = 0;
-                if (df->columnas[i].tipo == NUMERICO)
+                // Validar tipo de dato según la columna
+                if (df->columnas[i].tipo == NUMERICO && esNumerico(inicio))
                 {
-                    ((int *)df->columnas[i].datos)[numFilas] = atoi(inicio); // Guardar como entero
+                    ((int *)df->columnas[i].datos)[numFilas] = atoi(inicio);
+                    df->columnas[i].esNulo[numFilas] = 0;
                 }
-                else if (df->columnas[i].tipo == TEXTO || df->columnas[i].tipo == FECHA)
+                else if (df->columnas[i].tipo == FECHA && esFecha(inicio))
                 {
-                    ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio); // Guardar como cadena
+                    ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
+                    df->columnas[i].esNulo[numFilas] = 0;
+                }
+                else if (df->columnas[i].tipo == TEXTO)
+                {
+                    // Para TEXTO, validar que no sea numérico ni fecha
+                    if (!esNumerico(inicio) && !esFecha(inicio))
+                    {
+                        ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
+                        df->columnas[i].esNulo[numFilas] = 0;
+                    }
+                    else
+                    {
+                        df->columnas[i].esNulo[numFilas] = 1; // Tipo incorrecto
+                        printf("\033[0;31mAdvertencia: El valor '%s' en la columna '%s' no coincide con el tipo TEXTO y será marcado como nulo.\033[0m\n", inicio, df->columnas[i].nombre);
+                    }
+                }
+                else
+                {
+                    df->columnas[i].esNulo[numFilas] = 1; // Tipo incorrecto
+                    printf("\033[0;31mAdvertencia: El valor '%s' en la columna '%s' no coincide con el tipo esperado y será marcado como nulo.\033[0m\n", inicio, df->columnas[i].nombre);
                 }
             }
 
@@ -301,6 +320,7 @@ Dataframe *cargarCSV(char *nombreFichero)
     return df;
 }
 
+
 // funcion para mostrar las primeras 'n' filas del dataframe
 void viewDataframe(Dataframe *df, int n)
 {
@@ -314,11 +334,10 @@ void viewDataframe(Dataframe *df, int n)
         n = df->numFilas;
 
     // Mostrar los nombres de las columnas
-    for (int i = 0; i < df->numColumnas; i++)
-    {
-        printf("%s\t", df->columnas[i].nombre);
+    for (int i = 0; i < df->numColumnas; i++) {
+        printf("\033[0;32m%s\t", df->columnas[i].nombre);
     }
-    printf("\n");
+    printf("\033[0m\n");
 
     // Mostrar las primeras 'n' filas
     for (int fila = 0; fila < n; fila++)
@@ -327,21 +346,21 @@ void viewDataframe(Dataframe *df, int n)
         {
             if (df->columnas[col].esNulo[fila])
             {
-                printf("#N/A\t");
+                printf("\033[0;32m#N/A\t");
             }
             else
             {
                 if (df->columnas[col].tipo == NUMERICO)
                 {
-                    printf("%d\t", ((int *)df->columnas[col].datos)[fila]); // Mostrar enteros
+                    printf("\033[0;32m%d\t", ((int *)df->columnas[col].datos)[fila]); // Mostrar enteros
                 }
                 else if (df->columnas[col].tipo == TEXTO || df->columnas[col].tipo == FECHA)
                 {
-                    printf("%s\t", ((char **)df->columnas[col].datos)[fila]); // Mostrar texto o fecha
+                    printf("\033[0;32m%s\t", ((char **)df->columnas[col].datos)[fila]); // Mostrar texto o fecha
                 }
             }
         }
-        printf("\n");
+        printf("\033[0m\n");
     }
 }
 
@@ -389,89 +408,3 @@ void mostrarMetadatos(Dataframe *df)
     }
     printf("\033[0m"); // Resetear color
 }
-
-// // Funcion para ordenar el dataframe
-// void ordenarDataframe(Dataframe *df, char *nombreColumna, int ascendente) {
-//     if (!df) {
-//         printf("\033[0;31mError: no hay dataframe activo.\033[0m\n");
-//         return;
-//     }
-
-//     int indiceColumna = -1;
-//     for (int i = 0; i < df->numColumnas; i++) {
-//         if (strcmp(df->columnas[i].nombre, nombreColumna) == 0) {
-//             indiceColumna = i;
-//             break;
-//         }
-//     }
-
-//     if (indiceColumna == -1) {
-//         printf("\033[0;31mError: columna '%s' no encontrada.\033[0m\n", nombreColumna);
-//         return;
-//     }
-
-//     for (int i = 0; i < df->numFilas - 1; i++) {
-//         for (int j = i + 1; j < df->numFilas; j++) {
-//             int comparacion;
-//             if (df->columnas[indiceColumna].tipo == NUMERICO) {
-//                 int valor1 = ((int*)df->columnas[indiceColumna].datos)[df->indice[i]];
-//                 int valor2 = ((int*)df->columnas[indiceColumna].datos)[df->indice[j]];
-//                 comparacion = valor1 - valor2;
-//             } else {
-//                 char *valor1 = ((char**)df->columnas[indiceColumna].datos)[df->indice[i]];
-//                 char *valor2 = ((char**)df->columnas[indiceColumna].datos)[df->indice[j]];
-//                 comparacion = strcmp(valor1, valor2);
-//             }
-
-//             if ((ascendente && comparacion > 0) || (!ascendente && comparacion < 0)) {
-//                 int temp = df->indice[i];
-//                 df->indice[i] = df->indice[j];
-//                 df->indice[j] = temp;
-//             }
-//         }
-//     }
-
-//     printf("\033[0;32mDataframe ordenado por la columna '%s'.\033[0m\n", nombreColumna);
-// }
-
-// // Funcion para escribir dataframe en un fichero csv
-// void guardarCSV(Dataframe *df, char *nombreFichero) {
-//     if (!df) {
-//         printf("\033[0;31mError: no hay dataframe activo.\033[0m\n");
-//         return;
-//     }
-
-//     FILE *archivo = fopen(nombreFichero, "w");
-//     if (!archivo) {
-//         printf("\033[0;31mError al crear el archivo %s.\033[0m\n", nombreFichero);
-//         return;
-//     }
-
-//     // Escribir encabezados
-//     for (int i = 0; i < df->numColumnas; i++) {
-//         fprintf(archivo, "%s", df->columnas[i].nombre);
-//         if (i < df->numColumnas - 1) {
-//             fprintf(archivo, ",");
-//         }
-//     }
-//     fprintf(archivo, "\n");
-
-//     // Escribir las filas en el orden del array "indice"
-//     for (int fila = 0; fila < df->numFilas; fila++) {
-//         int filaIndice = df->indice[fila];
-//         for (int col = 0; col < df->numColumnas; col++) {
-//             if (df->columnas[col].esNulo[filaIndice]) {
-//                 fprintf(archivo, "#N/A");
-//             } else if (df->columnas[col].tipo == NUMERICO) {
-//                 fprintf(archivo, "%d", ((int*)df->columnas[col].datos)[filaIndice]);
-//             } else {
-//                 fprintf(archivo, "%s", ((char**)df->columnas[col].datos)[filaIndice]);
-//             }
-//             if (col < df->numColumnas - 1) fprintf(archivo, ",");
-//         }
-//         fprintf(archivo, "\n");;
-//     }
-
-//     fclose(archivo);
-//     printf("\033[0;32mDataframe guardado en '%s'.\033[0m\n", nombreFichero);
-// }
