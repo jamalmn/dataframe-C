@@ -30,8 +30,8 @@ void mostrarPromptDataframe() {
 
 // Inicialización del programa
 void inicializarPrograma() {
-    printf("=== PROGRAMA DE MANEJO DE DATAFRAMES ===\n\n");
-    printf("DATOS DEL ALUMNO:\n");
+    printf("\033[1;34m=== PROGRAMA DE MANEJO DE DATAFRAMES ===\033[0m\n\n");
+    printf("\033[1;32mDATOS DEL ALUMNO:\033[0m\n");
     printf("NOMBRE + APELLIDOS: Jamal Menchi Hajji\n");
     printf("CORREO: jamal.menchi@goumh.umh.es\n\n");
 }
@@ -79,6 +79,57 @@ void manejarComandoMeta() {
     }
 }
 
+// Manejar el comando "sort"
+void manejarComandoSort(const char *comando) {
+    char nombreColumna[100];
+    char orden[4] = "asc";  // Por defecto, ascendente
+    int numParametros = sscanf(comando, "%s %s", nombreColumna, orden);
+
+    if (numParametros < 1 || numParametros > 2) {
+        printf("\033[0;31mError: número incorrecto de parámetros.\033[0m\n");
+        return;
+    }
+
+    // Validar que la columna existe y ejecutar la función
+    sortDataframe(dataframeActivo, comando);
+}
+
+// Manejar el comando "save"
+// void manejarComandoSave(const char *comando) {
+//     char nombreFichero[100];
+//     if (sscanf(comando, "%s", nombreFichero) == 1) {
+//         saveDataframe(dataframeActivo, nombreFichero);
+//     } else {
+//         printf("\033[0;31mError: debe especificar el nombre del archivo.\033[0m\n");
+//     }
+// }
+// // Manejar el comando "filter"
+// void manejarComandoFilter(const char *comando) {
+//     // Lógica para procesar el comando filter, como obtener la columna, operador y valor
+//     filterDataframe(dataframeActivo, comando);
+// }
+// // Manejar el comando "delnull"
+// void manejarComandoDelNull(const char *comando) {
+//     // Obtener el nombre de la columna y eliminar las filas con valores nulos
+//     delNull(dataframeActivo, comando);
+// }
+// // Manejar el comando "delcolum"
+// void manejarComandoDelColum(const char *comando) {
+//     // Obtener el nombre de la columna y eliminarla del dataframe
+//     delColumn(dataframeActivo, comando);
+// }
+// // Manejar el comando "quarter"
+// void manejarComandoQuarter(const char *comando) {
+//     char nombreColumna[100];
+//     char nombreNuevaColumna[100];
+
+//     if (sscanf(comando, "%s %s", nombreColumna, nombreNuevaColumna) == 2) {
+//         quarterColumn(dataframeActivo, nombreColumna, nombreNuevaColumna);
+//     } else {
+//         printf("\033[0;31mError: parámetros incorrectos para quarter.\033[0m\n");
+//     }
+// }
+
 // Manejar comandos desconocidos
 void manejarComandoDesconocido() {
     printf("\033[0;31mComando no válido.\033[0m\n");
@@ -112,7 +163,31 @@ void ejecutarCicloComandos() {
             manejarComandoView(comando + 5);
         } else if (strcmp(comando, "meta") == 0) {
             manejarComandoMeta();
-        } else {
+        }  // Comando sort
+        else if (strncmp(comando, "sort", 4) == 0) {
+            manejarComandoSort(comando + 5);  // Pasar el comando sin "sort"
+        }
+        // // Comando save
+        // else if (strncmp(comando, "save", 4) == 0) {
+        //     manejarComandoSave(comando + 5);  // Pasar el comando sin "save"
+        // }
+        // // Comando filter
+        // else if (strncmp(comando, "filter", 6) == 0) {
+        //     manejarComandoFilter(comando + 7);  // Pasar el comando sin "filter"
+        // }
+        // // Comando delnull
+        // else if (strncmp(comando, "delnull", 7) == 0) {
+        //     manejarComandoDelNull(comando + 8);  // Pasar el comando sin "delnull"
+        // }
+        // // Comando delcolum
+        // else if (strncmp(comando, "delcolum", 8) == 0) {
+        //     manejarComandoDelColum(comando + 9);  // Pasar el comando sin "delcolum"
+        // }
+        // // Comando quarter
+        // else if (strncmp(comando, "quarter", 7) == 0) {
+        //     manejarComandoQuarter(comando + 8);  // Pasar el comando sin "quarter"
+        // } 
+        else {
             manejarComandoDesconocido();
         }
     }
@@ -330,6 +405,7 @@ Dataframe *cargarCSV(char *nombreFichero)
         printf("\033[0;31mError: no se pudo abrir el archivo %s.\033[0m\n", nombreFichero);
         return NULL;
     }
+
     char buffer[1024];
     int numFilas = 0;
     int numColumnas = 0;
@@ -351,6 +427,7 @@ Dataframe *cargarCSV(char *nombreFichero)
     }
 
     fseek(archivo, posicion, SEEK_SET);
+
     // Leer los nombres de las columnas
     if (fgets(buffer, sizeof(buffer), archivo))
     {
@@ -358,6 +435,7 @@ Dataframe *cargarCSV(char *nombreFichero)
         char *token = strtok(buffer, ",");
         while (token)
         {
+            token[strcspn(token, "\r\n")] = '\0'; // Limpiar caracteres de nueva línea
             strncpy(df->columnas[i].nombre, token, 30);
             token = strtok(NULL, ",");
             i++;
@@ -365,6 +443,7 @@ Dataframe *cargarCSV(char *nombreFichero)
     }
 
     posicion = ftell(archivo);
+
     // Leer los tipos de datos a partir de la segunda fila
     if (fgets(buffer, sizeof(buffer), archivo))
     {
@@ -395,7 +474,30 @@ Dataframe *cargarCSV(char *nombreFichero)
 
     fseek(archivo, posicion, SEEK_SET);
 
-    // Procesar el resto de las filas
+    // Contar filas en el archivo
+    while (fgets(buffer, sizeof(buffer), archivo))
+    {
+        numFilas++;
+    }
+    df->numFilas = numFilas;
+
+    // Inicializar el array `indice`
+    df->indice = malloc(numFilas * sizeof(int));
+    for (int i = 0; i < numFilas; i++) {
+        df->indice[i] = i; // Inicializar con valores consecutivos
+    }
+
+    printf("[DEBUG] Número de filas: %d\n", numFilas);
+    printf("[DEBUG] Índice inicializado: ");
+    for (int i = 0; i < numFilas; i++) {
+        printf("%d ", df->indice[i]);
+    }
+    printf("\n");
+
+    // Volver a procesar el archivo para leer los datos
+    fseek(archivo, posicion, SEEK_SET);
+    numFilas = 0; // Reiniciar contador de filas
+
     while (fgets(buffer, sizeof(buffer), archivo))
     {
         int i = 0;
@@ -429,12 +531,7 @@ Dataframe *cargarCSV(char *nombreFichero)
                 }
                 else if (df->columnas[i].tipo == TEXTO)
                 {
-                    // Limpiar el valor antes de validar
                     inicio[strcspn(inicio, "\r\n")] = '\0';
-                    while (*inicio == ' ')
-                        inicio++;
-
-                    printf("Validando como TEXTO: '%s' en columna '%s'\n", inicio, df->columnas[i].nombre);
                     if (esTexto(inicio))
                     {
                         ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
@@ -443,14 +540,11 @@ Dataframe *cargarCSV(char *nombreFichero)
                     else
                     {
                         df->columnas[i].esNulo[numFilas] = 1;
-                        printf("\033[0;31mAdvertencia: El valor '%s' en la columna '%s' no coincide con el tipo TEXTO y será marcado como nulo.\033[0m\n", inicio, df->columnas[i].nombre);
                     }
                 }
-
                 else
                 {
                     df->columnas[i].esNulo[numFilas] = 1; // Tipo incorrecto
-                    printf("\033[0;31mAdvertencia: El valor '%s' en la columna '%s' no coincide con el tipo esperado y será marcado como nulo.\033[0m\n", inicio, df->columnas[i].nombre);
                 }
             }
 
@@ -466,8 +560,6 @@ Dataframe *cargarCSV(char *nombreFichero)
         }
         numFilas++;
     }
-
-    df->numFilas = numFilas;
 
     fclose(archivo);
     return df;
@@ -561,3 +653,134 @@ void mostrarMetadatos(Dataframe *df)
     }
     printf("\033[0m"); // Resetear color
 }
+
+void sortDataframe(Dataframe *df, const char *comando) {
+    if (!df) {
+        printf("\033[0;31mError: no hay un dataframe activo.\033[0m\n");
+        return;
+    }
+
+    // Validar el índice
+    if (!df->indice) {
+        printf("\033[0;31mError: El índice no está inicializado.\033[0m\n");
+        return;
+    }
+
+    // printf("[DEBUG] Número de filas: %d, Número de columnas: %d\n", df->numFilas, df->numColumnas);
+
+    // Variables para el comando
+    char nombreColumna[30];
+    char orden[4] = "asc"; // Orden predeterminado
+    int columnaIndex = -1;
+
+    // Parsear el comando
+    int numParametros = sscanf(comando, "%s %s", nombreColumna, orden);
+    // printf("[DEBUG] Comando recibido: columna='%s', orden='%s', parámetros=%d\n", nombreColumna, orden, numParametros);
+
+    if (numParametros < 1 || numParametros > 2) {
+        printf("\033[0;31mError: número incorrecto de parámetros.\033[0m\n");
+        return;
+    }
+
+    // Validar el orden
+    if (numParametros == 2 && strcmp(orden, "asc") != 0 && strcmp(orden, "des") != 0) {
+        printf("\033[0;31mError: El parámetro de orden debe ser 'asc' o 'des'.\033[0m\n");
+        return;
+    }
+
+    // Buscar el índice de la columna
+    for (int i = 0; i < df->numColumnas; i++) {
+        // printf("[DEBUG] Comparando columna '%s' con '%s'\n", df->columnas[i].nombre, nombreColumna);
+        if (strcmp(df->columnas[i].nombre, nombreColumna) == 0) {
+            columnaIndex = i;
+            break;
+        }
+    }
+
+    if (columnaIndex == -1) {
+        printf("\033[0;31mError: La columna '%s' no existe en el dataframe.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    // printf("[DEBUG] Columna encontrada en el índice %d\n", columnaIndex);
+
+    // Mostrar índice inicial
+    // printf("[DEBUG] Índice inicial: ");
+    for (int i = 0; i < df->numFilas; i++) {
+        printf("%d ", df->indice[i]);
+    }
+    printf("\n");
+
+    // Ordenar las filas utilizando el array 'indice'
+    for (int i = 0; i < df->numFilas - 1; i++) {
+        for (int j = i + 1; j < df->numFilas; j++) {
+            int filaI = df->indice[i];
+            int filaJ = df->indice[j];
+            int comparar = 0;
+
+            // Comparar valores nulos
+            if (df->columnas[columnaIndex].esNulo[filaI] && df->columnas[columnaIndex].esNulo[filaJ]) {
+                comparar = 0; // Ambos nulos
+                // printf("[DEBUG] Ambos valores son nulos\n");
+            } else if (df->columnas[columnaIndex].esNulo[filaI]) {
+                comparar = -1; // FilaI nulo, va primero
+                // printf("[DEBUG] Fila %d (índice %d) es nulo\n", i, filaI);
+            } else if (df->columnas[columnaIndex].esNulo[filaJ]) {
+                comparar = 1; // FilaJ nulo, va primero
+                // printf("[DEBUG] Fila %d (índice %d) es nulo\n", j, filaJ);
+            } else {
+                // Comparar según el tipo de dato
+                if (df->columnas[columnaIndex].tipo == NUMERICO) {
+                    int valorI = ((int *)df->columnas[columnaIndex].datos)[filaI];
+                    int valorJ = ((int *)df->columnas[columnaIndex].datos)[filaJ];
+                    comparar = (valorI > valorJ) - (valorI < valorJ);
+                    // printf("[DEBUG] Comparando NUMERICO: %d y %d\n", valorI, valorJ);
+                } else if (df->columnas[columnaIndex].tipo == TEXTO) {
+                    char *valorI = ((char **)df->columnas[columnaIndex].datos)[filaI];
+                    char *valorJ = ((char **)df->columnas[columnaIndex].datos)[filaJ];
+                    comparar = strcmp(valorI, valorJ);
+                    // printf("[DEBUG] Comparando TEXTO: '%s' y '%s'\n", valorI, valorJ);
+                }
+            }
+
+            // Realizar intercambio si es necesario
+            if ((strcmp(orden, "asc") == 0 && comparar > 0) || (strcmp(orden, "des") == 0 && comparar < 0)) {
+                int temp = df->indice[i];
+                df->indice[i] = df->indice[j];
+                df->indice[j] = temp;
+                // printf("[DEBUG] Intercambiando índices: %d y %d\n", i, j);
+            }
+        }
+    }
+
+    // Mostrar índice final
+    // printf("[DEBUG] Índice final: ");
+    for (int i = 0; i < df->numFilas; i++) {
+        printf("%d ", df->indice[i]);
+    }
+    printf("\n");
+
+    printf("\033[0;32mEl dataframe ha sido ordenado por la columna '%s' en orden %s.\033[0m\n", nombreColumna, orden);
+}
+
+
+//*****************************************************************
+// void saveDataframe(Dataframe *df, const char *nombreFichero) {
+//     // Implementación del comando save, guarda el dataframe en un archivo CSV.
+// }
+
+// void filterDataframe(Dataframe *df, const char *comando) {
+//     // Implementación del comando filter, filtra las filas del dataframe según la columna y el operador.
+// }
+
+// void delNull(Dataframe *df, const char *nombreColumna) {
+//     // Implementación del comando delnull, elimina filas con valores nulos en la columna indicada.
+// }
+
+// void delColumn(Dataframe *df, const char *nombreColumna) {
+//     // Implementación del comando delcolum, elimina la columna del dataframe.
+// }
+
+// void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna) {
+//     // Implementación del comando quarter, crea una nueva columna basada en el trimestre de la fecha.
+// }
