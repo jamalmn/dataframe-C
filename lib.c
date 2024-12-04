@@ -95,19 +95,20 @@ void manejarComandoSort(const char *comando) {
 }
 
 // Manejar el comando "save"
-// void manejarComandoSave(const char *comando) {
-//     char nombreFichero[100];
-//     if (sscanf(comando, "%s", nombreFichero) == 1) {
-//         saveDataframe(dataframeActivo, nombreFichero);
-//     } else {
-//         printf("\033[0;31mError: debe especificar el nombre del archivo.\033[0m\n");
-//     }
-// }
-// // Manejar el comando "filter"
+void manejarComandoSave(const char *comando) {
+    char nombreFichero[100];
+    if (sscanf(comando, "%s", nombreFichero) == 1) {
+        saveDataframe(dataframeActivo, nombreFichero);
+    } else {
+        printf("\033[0;31mError: debe especificar el nombre del archivo.\033[0m\n");
+    }
+}
+// Manejar el comando "filter"
 // void manejarComandoFilter(const char *comando) {
 //     // Lógica para procesar el comando filter, como obtener la columna, operador y valor
 //     filterDataframe(dataframeActivo, comando);
 // }
+
 // // Manejar el comando "delnull"
 // void manejarComandoDelNull(const char *comando) {
 //     // Obtener el nombre de la columna y eliminar las filas con valores nulos
@@ -167,10 +168,9 @@ void ejecutarCicloComandos() {
         else if (strncmp(comando, "sort", 4) == 0) {
             manejarComandoSort(comando + 5);  // Pasar el comando sin "sort"
         }
-        // // Comando save
-        // else if (strncmp(comando, "save", 4) == 0) {
-        //     manejarComandoSave(comando + 5);  // Pasar el comando sin "save"
-        // }
+        else if (strncmp(comando, "save", 4) == 0) {
+            manejarComandoSave(comando + 5);  // Pasar el comando sin "save"
+        }
         // // Comando filter
         // else if (strncmp(comando, "filter", 6) == 0) {
         //     manejarComandoFilter(comando + 7);  // Pasar el comando sin "filter"
@@ -763,11 +763,55 @@ void sortDataframe(Dataframe *df, const char *comando) {
     printf("\033[0;32mEl dataframe ha sido ordenado por la columna '%s' en orden %s.\033[0m\n", nombreColumna, orden);
 }
 
+//*****************************************************************
+void saveDataframe(Dataframe *df, const char *nombreFichero) {
+    if (!df) {
+        printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
+        return;
+    }
+
+    FILE *archivo = fopen(nombreFichero, "w");
+    if (!archivo) {
+        printf("\033[0;31mError: No se pudo crear el archivo '%s'.\033[0m\n", nombreFichero);
+        return;
+    }
+
+    // Escribir los nombres de las columnas
+    for (int i = 0; i < df->numColumnas; i++) {
+        fprintf(archivo, "%s", df->columnas[i].nombre);
+        if (i < df->numColumnas - 1) {
+            fprintf(archivo, ",");
+        }
+    }
+    fprintf(archivo, "\n");
+
+    // Escribir los datos de las filas en orden según el índice
+    for (int fila = 0; fila < df->numFilas; fila++) {
+        int filaReal = df->indice[fila]; // Orden según índice
+        for (int col = 0; col < df->numColumnas; col++) {
+            if (df->columnas[col].esNulo[filaReal]) {
+                fprintf(archivo, "#N/A"); // Representación de valores nulos
+            } else {
+                if (df->columnas[col].tipo == NUMERICO) {
+                    fprintf(archivo, "%d", ((int *)df->columnas[col].datos)[filaReal]);
+                } else if (df->columnas[col].tipo == TEXTO || df->columnas[col].tipo == FECHA) {
+                    fprintf(archivo, "%s", ((char **)df->columnas[col].datos)[filaReal]);
+                }
+            }
+            if (col < df->numColumnas - 1) {
+                fprintf(archivo, ",");
+            }
+        }
+        fprintf(archivo, "\n");
+    }
+
+    fclose(archivo);
+    printf("\033[0;32mDataframe guardado exitosamente en '%s'.\033[0m\n", nombreFichero);
+}
 
 //*****************************************************************
-// void saveDataframe(Dataframe *df, const char *nombreFichero) {
-//     // Implementación del comando save, guarda el dataframe en un archivo CSV.
-// }
+
+
 
 // void filterDataframe(Dataframe *df, const char *comando) {
 //     // Implementación del comando filter, filtra las filas del dataframe según la columna y el operador.
