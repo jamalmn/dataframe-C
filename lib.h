@@ -58,7 +58,7 @@ void manejarComandoView(const char *argumento); // Manejar el comando 'view'
 void manejarComandoMeta();            // Manejar el comando 'meta'
 void manejarComandoDesconocido();     // Manejar comandos no válidos
 void manejarComandoSort(const char *comando);
-// void manejarComandoSave(const char *comando);
+void manejarComandoSave(const char *comando);
 // void manejarComandoFilter(const char *comando);
 // void manejarComandoDelNull(const char *comando);
 // void manejarComandoDelColum(const char *comando);
@@ -81,7 +81,7 @@ Dataframe* cargarCSV( char *nombreFichero);
 void viewDataframe(Dataframe *df, int n);
 void mostrarMetadatos(Dataframe *df);
 void sortDataframe(Dataframe *df, const char *comando);
-// void saveDataframe(Dataframe *df, const char *nombreFichero);
+void saveDataframe(Dataframe *df, const char *nombreFichero);
 // void filterDataframe(Dataframe *df, const char *comando);
 // void delNull(Dataframe *df, const char *nombreColumna);
 // void delColumn(Dataframe *df, const char *nombreColumna);
