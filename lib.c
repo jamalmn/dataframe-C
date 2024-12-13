@@ -114,25 +114,23 @@ void manejarComandoDelNull(const char *comando) {
     // Obtener el nombre de la columna y eliminar las filas con valores nulos
     delNull(dataframeActivo, comando);
 }
-
-
 // Manejar el comando "delcolum"
 void manejarComandoDelColum(const char *comando) {
     // Obtener el nombre de la columna y eliminarla del dataframe
     delColumn(dataframeActivo, comando);
 }
 
-// // Manejar el comando "quarter"
-// void manejarComandoQuarter(const char *comando) {
-//     char nombreColumna[100];
-//     char nombreNuevaColumna[100];
+// Manejar el comando "quarter"
+void manejarComandoQuarter(const char *comando) {
+    char nombreColumna[100];
+    char nombreNuevaColumna[100];
 
-//     if (sscanf(comando, "%s %s", nombreColumna, nombreNuevaColumna) == 2) {
-//         quarterColumn(dataframeActivo, nombreColumna, nombreNuevaColumna);
-//     } else {
-//         printf("\033[0;31mError: parámetros incorrectos para quarter.\033[0m\n");
-//     }
-// }
+    if (sscanf(comando, "%s %s", nombreColumna, nombreNuevaColumna) == 2) {
+        quarterColumn(dataframeActivo, nombreColumna, nombreNuevaColumna);
+    } else {
+        printf("\033[0;31mError: parámetros incorrectos para quarter.\033[0m\n");
+    }
+}
 
 // Manejar comandos desconocidos
 void manejarComandoDesconocido() {
@@ -185,10 +183,10 @@ void ejecutarCicloComandos() {
         else if (strncmp(comando, "delcolum", 8) == 0) {
             manejarComandoDelColum(comando + 9);  // Pasar el comando sin "delcolum"
         }
-        // // Comando quarter
-        // else if (strncmp(comando, "quarter", 7) == 0) {
-        //     manejarComandoQuarter(comando + 8);  // Pasar el comando sin "quarter"
-        // } 
+        // Comando quarter
+        else if (strncmp(comando, "quarter", 7) == 0) {
+            manejarComandoQuarter(comando + 8);  // Pasar el comando sin "quarter"
+        } 
         else {
             manejarComandoDesconocido();
         }
@@ -941,8 +939,6 @@ void filterDataframe(Dataframe *df, const char *comando) {
     printf("\033[0;32mEl dataframe ha sido filtrado por la columna '%s' con el operador '%s'.\033[0m\n", nombreColumna, operador);
 }
 
-
-//*****************************************************************
 void delNull(Dataframe *df, const char *nombreColumna) {
     if (!df) {
         printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
@@ -991,13 +987,13 @@ void delNull(Dataframe *df, const char *nombreColumna) {
     }
 }
 
-
 void delColumn(Dataframe *df, const char *nombreColumna) {
     if (!df) {
         printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
         return;
     }
 
+    // Buscar la columna por nombre
     int columnaIndex = -1;
     for (int i = 0; i < df->numColumnas; i++) {
         if (strcmp(df->columnas[i].nombre, nombreColumna) == 0) {
@@ -1011,13 +1007,20 @@ void delColumn(Dataframe *df, const char *nombreColumna) {
         return;
     }
 
-    // Liberar la memoria de la columna
-    Columna *columna = &df->columnas[columnaIndex];
-    free(columna->nombre);
-    free(columna->esNulo);
-    free(columna->datos);
+    // Mensaje de depuración
+    printf("[DEBUG] Eliminando columna '%s'.\n", df->columnas[columnaIndex].nombre);
 
-    // Desplazar todas las columnas posteriores a la izquierda
+    // Liberar la memoria asociada a la columna
+    if (df->columnas[columnaIndex].esNulo) {
+        free(df->columnas[columnaIndex].esNulo);
+        df->columnas[columnaIndex].esNulo = NULL;
+    }
+    if (df->columnas[columnaIndex].datos) {
+        free(df->columnas[columnaIndex].datos);
+        df->columnas[columnaIndex].datos = NULL;
+    }
+
+    // Desplazar las columnas restantes
     for (int i = columnaIndex; i < df->numColumnas - 1; i++) {
         df->columnas[i] = df->columnas[i + 1];
     }
@@ -1025,15 +1028,19 @@ void delColumn(Dataframe *df, const char *nombreColumna) {
     // Reducir el número de columnas
     df->numColumnas--;
 
-    printf("\033[0;32mLa columna '%s' ha sido eliminada.\033[0m\n", nombreColumna);
+    // Liberar la memoria de la última posición de columnas
+    df->columnas = realloc(df->columnas, df->numColumnas * sizeof(Columna));
+    if (df->columnas == NULL && df->numColumnas > 0) {
+        printf("\033[0;31mError: No se pudo reasignar memoria para las columnas.\033[0m\n");
+        return;
+    }
+
+    // Confirmación
+    printf("\033[0;32mLa columna '%s' ha sido eliminada correctamente.\033[0m\n", nombreColumna);
 }
 
 
-
-
-
-
 //****************************************************************+
-// void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna) {
-//     // Implementación del comando quarter, crea una nueva columna basada en el trimestre de la fecha.
-// }
+void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna) {
+    // Implementación del comando quarter, crea una nueva columna basada en el trimestre de la fecha.
+}
