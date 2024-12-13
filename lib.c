@@ -109,16 +109,19 @@ void manejarComandoFilter(const char *comando) {
     filterDataframe(dataframeActivo, comando);
 }
 
-// // Manejar el comando "delnull"
-// void manejarComandoDelNull(const char *comando) {
-//     // Obtener el nombre de la columna y eliminar las filas con valores nulos
-//     delNull(dataframeActivo, comando);
-// }
-// // Manejar el comando "delcolum"
-// void manejarComandoDelColum(const char *comando) {
-//     // Obtener el nombre de la columna y eliminarla del dataframe
-//     delColumn(dataframeActivo, comando);
-// }
+// Manejar el comando "delnull"
+void manejarComandoDelNull(const char *comando) {
+    // Obtener el nombre de la columna y eliminar las filas con valores nulos
+    delNull(dataframeActivo, comando);
+}
+
+
+// Manejar el comando "delcolum"
+void manejarComandoDelColum(const char *comando) {
+    // Obtener el nombre de la columna y eliminarla del dataframe
+    delColumn(dataframeActivo, comando);
+}
+
 // // Manejar el comando "quarter"
 // void manejarComandoQuarter(const char *comando) {
 //     char nombreColumna[100];
@@ -171,18 +174,17 @@ void ejecutarCicloComandos() {
         else if (strncmp(comando, "save", 4) == 0) {
             manejarComandoSave(comando + 5);  // Pasar el comando sin "save"
         }
-        // Comando filter
         else if (strncmp(comando, "filter", 6) == 0) {
             manejarComandoFilter(comando + 7);  // Pasar el comando sin "filter"
         }
-        // // Comando delnull
-        // else if (strncmp(comando, "delnull", 7) == 0) {
-        //     manejarComandoDelNull(comando + 8);  // Pasar el comando sin "delnull"
-        // }
-        // // Comando delcolum
-        // else if (strncmp(comando, "delcolum", 8) == 0) {
-        //     manejarComandoDelColum(comando + 9);  // Pasar el comando sin "delcolum"
-        // }
+        // Comando delnull
+        else if (strncmp(comando, "delnull", 7) == 0) {
+            manejarComandoDelNull(comando + 8);  // Pasar el comando sin "delnull"
+        }
+        // Comando delcolum
+        else if (strncmp(comando, "delcolum", 8) == 0) {
+            manejarComandoDelColum(comando + 9);  // Pasar el comando sin "delcolum"
+        }
         // // Comando quarter
         // else if (strncmp(comando, "quarter", 7) == 0) {
         //     manejarComandoQuarter(comando + 8);  // Pasar el comando sin "quarter"
@@ -819,8 +821,6 @@ void saveDataframe(Dataframe *df, const char *nombreFichero) {
     printf("\033[0;32mDataframe guardado exitosamente en '%s'.\033[0m\n", nombreFichero);
 }
 
-//*****************************************************************
-
 void filterDataframe(Dataframe *df, const char *comando) {
     if (!df) {
         printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
@@ -943,14 +943,97 @@ void filterDataframe(Dataframe *df, const char *comando) {
 
 
 //*****************************************************************
-// void delNull(Dataframe *df, const char *nombreColumna) {
-//     // Implementación del comando delnull, elimina filas con valores nulos en la columna indicada.
-// }
+void delNull(Dataframe *df, const char *nombreColumna) {
+    if (!df) {
+        printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
+        return;
+    }
 
-// void delColumn(Dataframe *df, const char *nombreColumna) {
-//     // Implementación del comando delcolum, elimina la columna del dataframe.
-// }
+    int columnaIndex = -1;
+    for (int i = 0; i < df->numColumnas; i++) {
+        if (strcmp(df->columnas[i].nombre, nombreColumna) == 0) {
+            columnaIndex = i;
+            break;
+        }
+    }
 
+    if (columnaIndex == -1) {
+        printf("\033[0;31mError: La columna '%s' no existe en el dataframe.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    Columna *columna = &df->columnas[columnaIndex];
+    int filasEliminadas = 0;
+    int *nuevoIndice = (int *)malloc(df->numFilas * sizeof(int)); // Nuevo índice para las filas válidas
+    int nuevaNumFilas = 0;
+
+    // Recorremos las filas del dataframe
+    for (int i = 0; i < df->numFilas; i++) {
+        int filaReal = df->indice[i];
+        if (columna->esNulo[filaReal]) {
+            // Si la fila tiene valor nulo en la columna indicada, se elimina
+            filasEliminadas++;
+        } else {
+            // Si no es nulo, la mantenemos en el nuevo índice
+            nuevoIndice[nuevaNumFilas++] = filaReal;
+        }
+    }
+
+    if (filasEliminadas > 0) {
+        // Actualizar el dataframe
+        free(df->indice);
+        df->indice = nuevoIndice;
+        df->numFilas = nuevaNumFilas;
+        printf("\033[0;32mSe han eliminado %d filas con valores nulos en la columna '%s'.\033[0m\n", filasEliminadas, nombreColumna);
+    } else {
+        free(nuevoIndice);
+        printf("\033[0;31mNo se encontraron valores nulos en la columna '%s'.\033[0m\n", nombreColumna);
+    }
+}
+
+
+void delColumn(Dataframe *df, const char *nombreColumna) {
+    if (!df) {
+        printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
+        return;
+    }
+
+    int columnaIndex = -1;
+    for (int i = 0; i < df->numColumnas; i++) {
+        if (strcmp(df->columnas[i].nombre, nombreColumna) == 0) {
+            columnaIndex = i;
+            break;
+        }
+    }
+
+    if (columnaIndex == -1) {
+        printf("\033[0;31mError: La columna '%s' no existe en el dataframe.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    // Liberar la memoria de la columna
+    Columna *columna = &df->columnas[columnaIndex];
+    free(columna->nombre);
+    free(columna->esNulo);
+    free(columna->datos);
+
+    // Desplazar todas las columnas posteriores a la izquierda
+    for (int i = columnaIndex; i < df->numColumnas - 1; i++) {
+        df->columnas[i] = df->columnas[i + 1];
+    }
+
+    // Reducir el número de columnas
+    df->numColumnas--;
+
+    printf("\033[0;32mLa columna '%s' ha sido eliminada.\033[0m\n", nombreColumna);
+}
+
+
+
+
+
+
+//****************************************************************+
 // void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna) {
 //     // Implementación del comando quarter, crea una nueva columna basada en el trimestre de la fecha.
 // }
