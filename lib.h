@@ -59,7 +59,7 @@ void manejarComandoMeta();            // Manejar el comando 'meta'
 void manejarComandoDesconocido();     // Manejar comandos no válidos
 void manejarComandoSort(const char *comando);
 void manejarComandoSave(const char *comando);
-// void manejarComandoFilter(const char *comando);
+void manejarComandoFilter(const char *comando);
 // void manejarComandoDelNull(const char *comando);
 // void manejarComandoDelColum(const char *comando);
 // void manejarComandoQuarter(const char *comando);
@@ -82,7 +82,7 @@ void viewDataframe(Dataframe *df, int n);
 void mostrarMetadatos(Dataframe *df);
 void sortDataframe(Dataframe *df, const char *comando);
 void saveDataframe(Dataframe *df, const char *nombreFichero);
-// void filterDataframe(Dataframe *df, const char *comando);
+void filterDataframe(Dataframe *df, const char *comando);
 // void delNull(Dataframe *df, const char *nombreColumna);
 // void delColumn(Dataframe *df, const char *nombreColumna);
 // void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna);
