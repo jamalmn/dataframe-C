@@ -104,10 +104,10 @@ void manejarComandoSave(const char *comando) {
     }
 }
 // Manejar el comando "filter"
-// void manejarComandoFilter(const char *comando) {
-//     // Lógica para procesar el comando filter, como obtener la columna, operador y valor
-//     filterDataframe(dataframeActivo, comando);
-// }
+void manejarComandoFilter(const char *comando) {
+    // Lógica para procesar el comando filter, como obtener la columna, operador y valor
+    filterDataframe(dataframeActivo, comando);
+}
 
 // // Manejar el comando "delnull"
 // void manejarComandoDelNull(const char *comando) {
@@ -171,10 +171,10 @@ void ejecutarCicloComandos() {
         else if (strncmp(comando, "save", 4) == 0) {
             manejarComandoSave(comando + 5);  // Pasar el comando sin "save"
         }
-        // // Comando filter
-        // else if (strncmp(comando, "filter", 6) == 0) {
-        //     manejarComandoFilter(comando + 7);  // Pasar el comando sin "filter"
-        // }
+        // Comando filter
+        else if (strncmp(comando, "filter", 6) == 0) {
+            manejarComandoFilter(comando + 7);  // Pasar el comando sin "filter"
+        }
         // // Comando delnull
         // else if (strncmp(comando, "delnull", 7) == 0) {
         //     manejarComandoDelNull(comando + 8);  // Pasar el comando sin "delnull"
@@ -366,6 +366,27 @@ int esFecha(char *str)
     // Todo es válido
     return 1;
 }
+
+// Función para convertir una fecha en formato YYYY-MM-DD a struct tm
+int parseFecha(const char *str, struct tm *fecha) {
+    // Usamos sscanf para descomponer la fecha en año, mes y día
+    int anio, mes, dia;
+    if (sscanf(str, "%4d-%2d-%2d", &anio, &mes, &dia) != 3) {
+        return 0;  // Error de parseo
+    }
+
+    // Asignamos los valores a la estructura tm
+    fecha->tm_year = anio - 1900;  // Años desde 1900
+    fecha->tm_mon = mes - 1;       // Meses de 0 a 11
+    fecha->tm_mday = dia;         // Día del mes
+    fecha->tm_hour = 0;
+    fecha->tm_min = 0;
+    fecha->tm_sec = 0;
+    fecha->tm_isdst = -1; // Sin información sobre el horario de verano
+
+    return 1; // Éxito
+}
+
 
 int esTexto(char *str)
 {
@@ -566,10 +587,8 @@ Dataframe *cargarCSV(char *nombreFichero)
 }
 
 // funcion para mostrar las primeras 'n' filas del dataframe
-void viewDataframe(Dataframe *df, int n)
-{
-    if (!df)
-    {
+void viewDataframe(Dataframe *df, int n) {
+    if (!df) {
         printf("\033[0;31mError: no hay dataframe activo.\033[0m\n");
         return;
     }
@@ -578,30 +597,22 @@ void viewDataframe(Dataframe *df, int n)
         n = df->numFilas;
 
     // Mostrar los nombres de las columnas
-    for (int i = 0; i < df->numColumnas; i++)
-    {
+    for (int i = 0; i < df->numColumnas; i++) {
         printf("\033[0;32m%s\t", df->columnas[i].nombre);
     }
     printf("\033[0m\n");
 
-    // Mostrar las primeras 'n' filas
-    for (int fila = 0; fila < n; fila++)
-    {
-        for (int col = 0; col < df->numColumnas; col++)
-        {
-            if (df->columnas[col].esNulo[fila])
-            {
+    // Mostrar las primeras 'n' filas respetando el índice
+    for (int i = 0; i < n; i++) {
+        int filaReal = df->indice[i]; // Usar el índice para acceder a las filas reales
+        for (int col = 0; col < df->numColumnas; col++) {
+            if (df->columnas[col].esNulo[filaReal]) {
                 printf("\033[0;32m#N/A\t");
-            }
-            else
-            {
-                if (df->columnas[col].tipo == NUMERICO)
-                {
-                    printf("\033[0;32m%d\t", ((int *)df->columnas[col].datos)[fila]); // Mostrar enteros
-                }
-                else if (df->columnas[col].tipo == TEXTO || df->columnas[col].tipo == FECHA)
-                {
-                    printf("\033[0;32m%s\t", ((char **)df->columnas[col].datos)[fila]); // Mostrar texto o fecha
+            } else {
+                if (df->columnas[col].tipo == NUMERICO) {
+                    printf("\033[0;32m%d\t", ((int *)df->columnas[col].datos)[filaReal]); // Mostrar enteros
+                } else if (df->columnas[col].tipo == TEXTO || df->columnas[col].tipo == FECHA) {
+                    printf("\033[0;32m%s\t", ((char **)df->columnas[col].datos)[filaReal]); // Mostrar texto o fecha
                 }
             }
         }
@@ -763,7 +774,6 @@ void sortDataframe(Dataframe *df, const char *comando) {
     printf("\033[0;32mEl dataframe ha sido ordenado por la columna '%s' en orden %s.\033[0m\n", nombreColumna, orden);
 }
 
-//*****************************************************************
 void saveDataframe(Dataframe *df, const char *nombreFichero) {
     if (!df) {
         printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
@@ -811,12 +821,128 @@ void saveDataframe(Dataframe *df, const char *nombreFichero) {
 
 //*****************************************************************
 
+void filterDataframe(Dataframe *df, const char *comando) {
+    if (!df) {
+        printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
+        return;
+    }
+
+    char nombreColumna[30];
+    char operador[4];
+    char valorStr[100];
+    int columnaIndex = -1;
+
+    // Parsear el comando
+    int numParametros = sscanf(comando, "%s %s %s", nombreColumna, operador, valorStr);
+    if (numParametros != 3) {
+        printf("\033[0;31mError: Número incorrecto de parámetros.\033[0m\n");
+        return;
+    }
+
+    // Validar el operador
+    if (strcmp(operador, "eq") != 0 && strcmp(operador, "neq") != 0 &&
+        strcmp(operador, "gt") != 0 && strcmp(operador, "lt") != 0) {
+        printf("\033[0;31mError: El operador debe ser 'eq', 'neq', 'gt' o 'lt'.\033[0m\n");
+        return;
+    }
+
+    // Buscar el índice de la columna
+    for (int i = 0; i < df->numColumnas; i++) {
+        if (strcmp(df->columnas[i].nombre, nombreColumna) == 0) {
+            columnaIndex = i;
+            break;
+        }
+    }
+
+    if (columnaIndex == -1) {
+        printf("\033[0;31mError: La columna '%s' no existe en el dataframe.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    Columna *columna = &df->columnas[columnaIndex];
+    TipoDato tipoColumna = columna->tipo;
+
+    // Mensaje de depuración
+    printf("[DEBUG] Filtrando columna '%s' con operador '%s' y valor '%s'\n", nombreColumna, operador, valorStr);
+
+    // Filtrar filas según el tipo de columna
+    int nuevaNumFilas = 0;
+    int *nuevoIndice = (int *)malloc(df->numFilas * sizeof(int)); // Nuevo índice para las filas filtradas
+
+    for (int i = 0; i < df->numFilas; i++) {
+        int filaReal = df->indice[i];
+        int cumpleCondicion = 0;
+
+        // Verificar valores nulos
+        if (columna->esNulo[filaReal]) {
+            printf("[DEBUG] Fila %d: Valor nulo, se descarta.\n", filaReal);
+            continue;
+        }
+
+        if (tipoColumna == NUMERICO) {
+            int valorColumna = ((int *)columna->datos)[filaReal];
+            int valorFiltro = atoi(valorStr);
+            printf("[DEBUG] Fila %d: Comparando %d con %d\n", filaReal, valorColumna, valorFiltro);
+
+            if ((strcmp(operador, "eq") == 0 && valorColumna == valorFiltro) ||
+                (strcmp(operador, "neq") == 0 && valorColumna != valorFiltro) ||
+                (strcmp(operador, "gt") == 0 && valorColumna > valorFiltro) ||
+                (strcmp(operador, "lt") == 0 && valorColumna < valorFiltro)) {
+                cumpleCondicion = 1;
+            }
+        } else if (tipoColumna == TEXTO) {
+            char *valorColumna = ((char **)columna->datos)[filaReal];
+            printf("[DEBUG] Fila %d: Comparando '%s' con '%s'\n", filaReal, valorColumna, valorStr);
+
+            if ((strcmp(operador, "eq") == 0 && strcmp(valorColumna, valorStr) == 0) ||
+                (strcmp(operador, "neq") == 0 && strcmp(valorColumna, valorStr) != 0)) {
+                cumpleCondicion = 1;
+            }
+        } else if (tipoColumna == FECHA) {
+            struct tm fechaFiltro;
+            if (!parseFecha(valorStr, &fechaFiltro)) {
+                printf("\033[0;31mError: El valor '%s' no es una fecha válida.\033[0m\n", valorStr);
+                free(nuevoIndice);
+                return;
+            }
+
+            // Parsear fecha de la columna
+            char *valorColumna = ((char **)columna->datos)[filaReal];
+            struct tm fechaColumna;
+            if (!parseFecha(valorColumna, &fechaColumna)) {
+                printf("[DEBUG] Fila %d: Fecha inválida en la columna.\n", filaReal);
+                continue; // Salir si la fecha en la columna es inválida
+            }
+
+            // Comparar fechas
+            double diff = difftime(mktime(&fechaColumna), mktime(&fechaFiltro));
+
+            if ((strcmp(operador, "eq") == 0 && diff == 0) ||
+                (strcmp(operador, "neq") == 0 && diff != 0) ||
+                (strcmp(operador, "gt") == 0 && diff > 0) ||
+                (strcmp(operador, "lt") == 0 && diff < 0)) {
+                cumpleCondicion = 1;
+            }
+        }
+
+        if (cumpleCondicion) {
+            printf("[DEBUG] Fila %d: Cumple la condición.\n", filaReal);
+            nuevoIndice[nuevaNumFilas++] = filaReal; // Añadir al nuevo índice
+        } else {
+            printf("[DEBUG] Fila %d: No cumple la condición.\n", filaReal);
+        }
+    }
+
+    // Actualizar el índice y el número de filas
+    free(df->indice);
+    df->indice = nuevoIndice;
+    df->numFilas = nuevaNumFilas;
+
+    printf("\033[0;32mEl dataframe ha sido filtrado por la columna '%s' con el operador '%s'.\033[0m\n", nombreColumna, operador);
+}
 
 
-// void filterDataframe(Dataframe *df, const char *comando) {
-//     // Implementación del comando filter, filtra las filas del dataframe según la columna y el operador.
-// }
-
+//*****************************************************************
 // void delNull(Dataframe *df, const char *nombreColumna) {
 //     // Implementación del comando delnull, elimina filas con valores nulos en la columna indicada.
 // }
