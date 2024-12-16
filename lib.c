@@ -299,17 +299,11 @@ int esBisiesto(int anio)
 int esFecha(char *str)
 {
     // Verificar longitud y formato básico
-    if (strlen(str) != 11 || strlen(str) != 10)
+    if (strlen(str) != 11 && strlen(str) != 10)
     {
-        if (strlen(str) == 11 && str[10] != '\n')
-        {
-            return 0;
-        }
-        else if (strlen(str) == 10)
-        {
-            return 0;
-        }
+        return 0;
     }
+
     if (str[4] != '-' || str[7] != '-')
     {
         return 0;
@@ -508,13 +502,6 @@ Dataframe *cargarCSV(char *nombreFichero)
         df->indice[i] = i; // Inicializar con valores consecutivos
     }
 
-    printf("[DEBUG] Número de filas: %d\n", numFilas);
-    printf("[DEBUG] Índice inicializado: ");
-    for (int i = 0; i < numFilas; i++) {
-        printf("%d ", df->indice[i]);
-    }
-    printf("\n");
-
     // Volver a procesar el archivo para leer los datos
     fseek(archivo, posicion, SEEK_SET);
     numFilas = 0; // Reiniciar contador de filas
@@ -547,7 +534,7 @@ Dataframe *cargarCSV(char *nombreFichero)
                 }
                 else if (df->columnas[i].tipo == FECHA && esFecha(inicio))
                 {
-                    ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
+                    ((char **)df->columnas[i].datos)[numFilas] = strtok(strdup(inicio), "\n");
                     df->columnas[i].esNulo[numFilas] = 0;
                 }
                 else if (df->columnas[i].tipo == TEXTO)
@@ -596,28 +583,57 @@ void viewDataframe(Dataframe *df, int n) {
     if (n > df->numFilas)
         n = df->numFilas;
 
-    // Mostrar los nombres de las columnas
+    // Crear una línea divisoria para la tabla
+    printf("+");
     for (int i = 0; i < df->numColumnas; i++) {
-        printf("\033[0;32m%s\t", df->columnas[i].nombre);
+        for (int j = 0; j < 17; j++) // Ancho fijo de 15 para las columnas
+            printf("-");
+        printf("+");
     }
-    printf("\033[0m\n");
+    printf("\n");
+
+    // Mostrar los nombres de las columnas
+    printf("|");
+    for (int i = 0; i < df->numColumnas; i++) {
+        printf("\033[0;32m %-16s\033[0m|", df->columnas[i].nombre); // Alinear nombres
+    }
+    printf("\n");
+
+    // Crear otra línea divisoria debajo de las cabeceras
+    printf("+");
+    for (int i = 0; i < df->numColumnas; i++) {
+        for (int j = 0; j < 17; j++)
+            printf("-");
+        printf("+");
+    }
+    printf("\n");
 
     // Mostrar las primeras 'n' filas respetando el índice
     for (int i = 0; i < n; i++) {
         int filaReal = df->indice[i]; // Usar el índice para acceder a las filas reales
+        printf("|"); // Comienzo de la fila
         for (int col = 0; col < df->numColumnas; col++) {
             if (df->columnas[col].esNulo[filaReal]) {
-                printf("\033[0;32m#N/A\t");
+                printf("\033[0;32m %-16s\033[0m|", "#N/A");
             } else {
                 if (df->columnas[col].tipo == NUMERICO) {
-                    printf("\033[0;32m%d\t", ((int *)df->columnas[col].datos)[filaReal]); // Mostrar enteros
+                    printf("\033[0;32m %-16d\033[0m|", ((int *)df->columnas[col].datos)[filaReal]); // Mostrar enteros
                 } else if (df->columnas[col].tipo == TEXTO || df->columnas[col].tipo == FECHA) {
-                    printf("\033[0;32m%s\t", ((char **)df->columnas[col].datos)[filaReal]); // Mostrar texto o fecha
+                    printf("\033[0;32m %-16s\033[0m|", ((char **)df->columnas[col].datos)[filaReal]); // Mostrar texto o fecha
                 }
             }
         }
-        printf("\033[0m\n");
+        printf("\n");
     }
+
+    // Crear una línea final divisoria
+    printf("+");
+    for (int i = 0; i < df->numColumnas; i++) {
+        for (int j = 0; j < 17; j++)
+            printf("-");
+        printf("+");
+    }
+    printf("\n");
 }
 
 // Función para mostrar metadatos del dataframe
@@ -1039,8 +1055,100 @@ void delColumn(Dataframe *df, const char *nombreColumna) {
     printf("\033[0;32mLa columna '%s' ha sido eliminada correctamente.\033[0m\n", nombreColumna);
 }
 
-
-//****************************************************************+
 void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna) {
-    // Implementación del comando quarter, crea una nueva columna basada en el trimestre de la fecha.
+    if (!df) {
+        printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
+        return;
+    }
+
+    // Verificar si la columna original existe y es de tipo FECHA
+    int columnaIndex = -1;
+    for (int i = 0; i < df->numColumnas; i++) {
+        if (strcmp(df->columnas[i].nombre, nombreColumna) == 0) {
+            columnaIndex = i;
+            break;
+        }
+    }
+
+    if (columnaIndex == -1) {
+        printf("\033[0;31mError: La columna '%s' no existe en el dataframe.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    if (df->columnas[columnaIndex].tipo != FECHA) {
+        printf("\033[0;31mError: La columna '%s' no es de tipo FECHA.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    // Verificar si la nueva columna ya existe
+    for (int i = 0; i < df->numColumnas; i++) {
+        if (strcmp(df->columnas[i].nombre, nombreNuevaColumna) == 0) {
+            printf("\033[0;31mError: La columna '%s' ya existe en el dataframe.\033[0m\n", nombreNuevaColumna);
+            return;
+        }
+    }
+
+    // Crear espacio para la nueva columna
+    Columna *nuevasColumnas = realloc(df->columnas, (df->numColumnas + 1) * sizeof(Columna));
+    if (!nuevasColumnas) {
+        printf("\033[0;31mError: No se pudo asignar memoria para la nueva columna.\033[0m\n");
+        return;
+    }
+    df->columnas = nuevasColumnas;
+
+    // Inicializar la nueva columna
+    Columna *nuevaColumna = &df->columnas[df->numColumnas];
+    strncpy(nuevaColumna->nombre, nombreNuevaColumna, sizeof(nuevaColumna->nombre) - 1);
+    nuevaColumna->nombre[sizeof(nuevaColumna->nombre) - 1] = '\0';
+    nuevaColumna->tipo = TEXTO;
+    nuevaColumna->datos = calloc(df->numFilas, sizeof(char *));
+    nuevaColumna->esNulo = calloc(df->numFilas, sizeof(unsigned char));
+    if (!nuevaColumna->datos || !nuevaColumna->esNulo) {
+        printf("\033[0;31mError: No se pudo asignar memoria para los datos de la nueva columna.\033[0m\n");
+        free(nuevaColumna->datos);
+        free(nuevaColumna->esNulo);
+        return;
+    }
+
+    // Procesar las filas
+    Columna *columnaOriginal = &df->columnas[columnaIndex];
+    for (int i = 0; i < df->numFilas; i++) {
+        int filaReal = df->indice[i];
+
+        // Manejar valores nulos
+        if (columnaOriginal->esNulo[filaReal]) {
+            nuevaColumna->esNulo[filaReal] = 1;
+            ((char **)nuevaColumna->datos)[filaReal] = strdup("#N/A");
+            continue;
+        }
+
+        char *fechaStr = ((char **)columnaOriginal->datos)[filaReal];
+        int mes = -1;
+
+        // Validar la fecha y extraer el mes
+        if (esFecha(fechaStr)) {
+            mes = atoi(fechaStr + 5); // Extraer el mes del formato YYYY-MM-DD
+        }
+
+        // Asignar trimestre basado en el mes
+        if (mes >= 1 && mes <= 3) {
+            nuevaColumna->esNulo[filaReal] = 0;
+            ((char **)nuevaColumna->datos)[filaReal] = strdup("Q1");
+        } else if (mes >= 4 && mes <= 6) {
+            nuevaColumna->esNulo[filaReal] = 0;
+            ((char **)nuevaColumna->datos)[filaReal] = strdup("Q2");
+        } else if (mes >= 7 && mes <= 9) {
+            nuevaColumna->esNulo[filaReal] = 0;
+            ((char **)nuevaColumna->datos)[filaReal] = strdup("Q3");
+        } else if (mes >= 10 && mes <= 12) {
+            nuevaColumna->esNulo[filaReal] = 0;
+            ((char **)nuevaColumna->datos)[filaReal] = strdup("Q4");
+        } else {
+            nuevaColumna->esNulo[filaReal] = 1;
+            ((char **)nuevaColumna->datos)[filaReal] = strdup("#N/A");
+        }
+    }
+
+    df->numColumnas++;
+    printf("\033[0;32mLa columna '%s' ha sido creada correctamente.\033[0m\n", nombreNuevaColumna);
 }
