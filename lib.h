@@ -61,8 +61,8 @@ void manejarComandoSort(const char *comando);
 void manejarComandoSave(const char *comando);
 void manejarComandoFilter(const char *comando);
 void manejarComandoDelNull(const char *comando);
-// void manejarComandoDelColum(const char *comando);
-// void manejarComandoQuarter(const char *comando);
+void manejarComandoDelColum(const char *comando);
+void manejarComandoQuarter(const char *comando);
 void finalizarPrograma();             // Liberar memoria y finalizar el programa
 void ejecutarCicloComandos();         // Ciclo principal para manejar comandos
 
@@ -85,5 +85,5 @@ void saveDataframe(Dataframe *df, const char *nombreFichero);
 void filterDataframe(Dataframe *df, const char *comando);
 void delNull(Dataframe *df, const char *nombreColumna);
 void delColumn(Dataframe *df, const char *nombreColumna);
-// void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna);
+void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreNuevaColumna);
 #endif
