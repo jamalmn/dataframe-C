@@ -30,11 +30,17 @@ void mostrarPromptDataframe() {
 
 // Inicialización del programa
 void inicializarPrograma() {
-    printf("\033[1;34m=== PROGRAMA DE MANEJO DE DATAFRAMES ===\033[0m\n\n");
+    // Título del programa en azul y negrita
+    printf("\033[1;34m=== \033[1;37mPROGRAMA DE MANEJO DE DATAFRAMES \033[1;34m===\033[0m\n\n");
+
+    // Encabezado con texto verde
     printf("\033[1;32mDATOS DEL ALUMNO:\033[0m\n");
-    printf("NOMBRE + APELLIDOS: Jamal Menchi Hajji\n");
-    printf("CORREO: jamal.menchi@goumh.umh.es\n\n");
+    
+    // Detalles con un fondo oscuro y texto en blanco
+    printf("\033[1;37m\033[48;5;235mNOMBRE + APELLIDOS: \033[1;33mJamal Menchi Hajji\033[0m\n");
+    printf("\033[1;37m\033[48;5;235mCORREO: \033[1;36mjamal.menchi@goumh.umh.es\033[0m\n\n");
 }
+
 
 // Manejar el comando "load"
 void manejarComandoLoad(const char *argumento) {
@@ -267,29 +273,42 @@ void liberarMemoria()
 }
 
 // funcion que valida si es numerico
-
-int esNumerico(char *str)
+int esNumerico(const char *str)
 {
     int i = 0;
-    // Manejar los signos (+ o -) al principio
-    if (str[0] == '-' || str[0] == '+')
+    int tienePunto = 0; // Indica si ya se encontró un punto decimal
+
+    // Manejar el signo al principio
+    if (str[i] == '-' || str[i] == '+')
     {
         i++;
     }
 
-    // Recorrer cada carácter, asegurando que todo sea un dígito
+    int tieneDigito = 0; // Asegura que haya al menos un dígito
+
     for (; str[i] != '\0'; i++)
     {
-        if (!isdigit(str[i]))
+        if (isdigit(str[i]))
         {
-            return 0; // No es numérico si algún carácter no es un dígito
+            tieneDigito = 1; // Encontró al menos un dígito
+        }
+        else if (str[i] == '.')
+        {
+            if (tienePunto)
+            {
+                return 0; // Más de un punto decimal
+            }
+            tienePunto = 1; // Marcar que hay un punto decimal
+        }
+        else
+        {
+            return 0; // Caracter no permitido
         }
     }
 
-    // Retorna verdadero solo si la cadena no está vacía
-    return (i > 0);
+    // Retornar válido solo si tiene al menos un dígito
+    return tieneDigito;
 }
-
 // funcion que valida si es fecha
 int esBisiesto(int anio)
 {
@@ -298,69 +317,60 @@ int esBisiesto(int anio)
 
 int esFecha(char *str)
 {
-    // Verificar longitud y formato básico
-    if (strlen(str) != 11 && strlen(str) != 10)
+    if (!str || (strlen(str) != 10))
     {
-        return 0;
+        return 0; // Longitud incorrecta
     }
 
-    if (str[4] != '-' || str[7] != '-')
+    // Detectar formato con barras (YYYY/MM/DD)
+    if (str[4] == '/' && str[7] == '/')
     {
-        return 0;
+        str[4] = '-';
+        str[7] = '-';
     }
 
-    // Verificar que los caracteres de año, mes y día sean dígitos
+    // Verificar formato básico YYYY-MM-DD
     for (int i = 0; i < 10; i++)
     {
-        if (i == 4 || i == 7)
-            continue; // Saltar los guiones
-        if (!isdigit(str[i]))
+        if ((i == 4 || i == 7))
         {
-            return 0;
-        } // Si no es dígito, no es válido
+            if (str[i] != '-')
+            {
+                return 0; // Falta el guion
+            }
+        }
+        else if (!isdigit(str[i]))
+        {
+            return 0; // No es un dígito donde debería serlo
+        }
     }
 
-    // Extraer año, mes y día
-    int anio = atoi(str);
-    int mes = atoi(str + 5);
-    int dia = atoi(str + 8);
+    // Verificar valores numéricos
+    int year = atoi(str);
+    int month = atoi(str + 5);
+    int day = atoi(str + 8);
 
-    // Verificar rango del mes
-    if (mes < 1 || mes > 12)
-        return 0;
+    if (month < 1 || month > 12 || day < 1 || day > 31)
+    {
+        return 0; // Mes o día fuera de rango
+    }
 
-    // Verificar rango del día dependiendo del mes
-    if (dia < 1)
-        return 0;
-
-    if (mes == 2)
+    // Verificar días máximos por mes
+    if ((month == 4 || month == 6 || month == 9 || month == 11) && day > 30)
+    {
+        return 0; // Meses de 30 días
+    }
+    if (month == 2)
     { // Febrero
-        if (esBisiesto(anio))
+        int isLeapYear = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
+        if ((isLeapYear && day > 29) || (!isLeapYear && day > 28))
         {
-            if (dia > 29)
-                return 0;
+            return 0; // Días de febrero
         }
-        else
-        {
-            if (dia > 28)
-                return 0;
-        }
-    }
-    else if (mes == 4 || mes == 6 || mes == 9 || mes == 11)
-    {
-        if (dia > 30)
-            return 0; // Meses con 30 días
-    }
-    else
-    {
-        if (dia > 31)
-            return 0; // Meses con 31 días
     }
 
-    // Todo es válido
-    return 1;
+    return 1; // Fecha válida
 }
-
 // Función para convertir una fecha en formato YYYY-MM-DD a struct tm
 int parseFecha(const char *str, struct tm *fecha) {
     // Usamos sscanf para descomponer la fecha en año, mes y día

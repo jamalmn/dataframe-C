@@ -73,7 +73,7 @@ void liberarDataframe(Dataframe *df);
 void liberarMemoriaLista();
 void liberarMemoria();
 
-int esNumerico(char *str);
+int esNumerico(const char *str);
 int esBisiesto(int anio);
 int esFecha(char *str);
 int esTexto(char *str);
