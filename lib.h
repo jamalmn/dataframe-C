@@ -72,7 +72,7 @@ void liberarColumna(Columna *columna);
 void liberarDataframe(Dataframe *df);
 void liberarMemoriaLista();
 void liberarMemoria();
-
+int contarFilas(FILE *archivo);
 int esNumerico(const char *str);
 int esBisiesto(int anio);
 int esFecha(char *str);
