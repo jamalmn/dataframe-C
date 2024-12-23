@@ -41,7 +41,6 @@ void inicializarPrograma() {
     printf("\033[1;37m\033[48;5;235mCORREO: \033[1;36mjamal.menchi@goumh.umh.es\033[0m\n\n");
 }
 
-
 // Manejar el comando "load"
 void manejarComandoLoad(const char *argumento) {
     char nombreFichero[100];
@@ -422,72 +421,112 @@ int esTexto(char *str)
     return 1; // es texto valido
 }
 
-Dataframe *cargarCSV(char *nombreFichero)
-{
+Dataframe *cargarCSV(char *nombreFichero) {
     FILE *archivo = fopen(nombreFichero, "r");
-    if (!archivo)
-    {
+    if (!archivo) {
         printf("\033[0;31mError: no se pudo abrir el archivo %s.\033[0m\n", nombreFichero);
         return NULL;
     }
 
-    char buffer[1024];
-    int numFilas = 0;
-    int numColumnas = 0;
     Dataframe *df = (Dataframe *)malloc(sizeof(Dataframe));
+    if (!df) {
+        printf("\033[0;31mError: no se pudo asignar memoria para el dataframe.\033[0m\n");
+        fclose(archivo);
+        return NULL;
+    }
 
-    // Leer 1a fila para obtener el número de columnas
-    long posicion = ftell(archivo);
-    if (fgets(buffer, sizeof(buffer), archivo))
-    {
+    memset(df, 0, sizeof(Dataframe));
+
+    // Contar columnas
+    df->numColumnas = contarColumnas(archivo);
+    if (df->numColumnas <= 0) {
+        printf("\033[0;31mError: el archivo no contiene columnas válidas.\033[0m\n");
+        free(df);
+        fclose(archivo);
+        return NULL;
+    }
+
+    // Inicializar columnas
+    inicializarDataframe(df, df->numColumnas);
+
+    // Leer encabezados
+    leerEncabezados(archivo, df);
+
+    // Determinar tipos de datos
+    determinarTipos(archivo, df);
+
+    // Debug: Confirm pointer after skipping headers
+    char debugBuffer[1024];
+    fseek(archivo, 0, SEEK_SET); // Reset pointer to start
+    fgets(debugBuffer, sizeof(debugBuffer), archivo); // Skip header row
+    printf("Skipping header: %s", debugBuffer);
+    fgets(debugBuffer, sizeof(debugBuffer), archivo); // Skip type row
+    printf("Skipping type row: %s", debugBuffer);
+
+    // Leer datos
+    leerDatos(archivo, df);
+
+    fclose(archivo);
+    return df;
+}
+
+static int contarColumnas(FILE *archivo) {
+    char buffer[1024];
+    int numColumnas = 0;
+
+    // Leer la primera línea
+    if (fgets(buffer, sizeof(buffer), archivo)) {
         char *token = strtok(buffer, ",");
-        while (token)
-        {
+        while (token) {
             numColumnas++;
             token = strtok(NULL, ",");
         }
-        df->numColumnas = numColumnas;
-        df->columnas = (Columna *)malloc(numColumnas * sizeof(Columna));
-        rewind(archivo); // Volver al inicio del archivo para leer de nuevo
+    }
+    rewind(archivo);
+    return numColumnas;
+}
+
+static void inicializarDataframe(Dataframe *df, int numColumnas) {
+    df->columnas = (Columna *)malloc(numColumnas * sizeof(Columna));
+    if (!df->columnas) {
+        printf("\033[0;31mError: no se pudo asignar memoria para las columnas.\033[0m\n");
+        exit(EXIT_FAILURE);
     }
 
-    fseek(archivo, posicion, SEEK_SET);
+    for (int i = 0; i < numColumnas; i++) {
+        memset(&df->columnas[i], 0, sizeof(Columna));
+    }
+}
 
-    // Leer los nombres de las columnas
-    if (fgets(buffer, sizeof(buffer), archivo))
-    {
-        int i = 0;
+static void leerEncabezados(FILE *archivo, Dataframe *df) {
+    char buffer[1024];
+
+    if (fgets(buffer, sizeof(buffer), archivo)) {
         char *token = strtok(buffer, ",");
-        while (token)
-        {
-            token[strcspn(token, "\r\n")] = '\0'; // Limpiar caracteres de nueva línea
-            strncpy(df->columnas[i].nombre, token, 30);
+        int i = 0;
+        while (token && i < df->numColumnas) {
+            token[strcspn(token, "\r\n")] = '\0'; // Limpiar saltos de línea
+            strncpy(df->columnas[i].nombre, token, sizeof(df->columnas[i].nombre) - 1);
             token = strtok(NULL, ",");
             i++;
         }
     }
+}
 
-    posicion = ftell(archivo);
+static void determinarTipos(FILE *archivo, Dataframe *df) {
+    char buffer[1024];
 
-    // Leer los tipos de datos a partir de la segunda fila
-    if (fgets(buffer, sizeof(buffer), archivo))
-    {
-        int i = 0;
+    if (fgets(buffer, sizeof(buffer), archivo)) {
         char *token = strtok(buffer, ",");
-        while (token)
-        {
-            if (esNumerico(token))
-            {
+        int i = 0;
+        while (token && i < df->numColumnas) {
+            if (esNumerico(token)) {
                 df->columnas[i].tipo = NUMERICO;
                 df->columnas[i].datos = malloc(1000 * sizeof(int));
-            }
-            else if (esFecha(token))
-            {
+            } else if (esFecha(token)) {
                 df->columnas[i].tipo = FECHA;
                 df->columnas[i].datos = malloc(1000 * sizeof(char *));
-            }
-            else
-            {
+            } else {
                 df->columnas[i].tipo = TEXTO;
                 df->columnas[i].datos = malloc(1000 * sizeof(char *));
             }
@@ -495,95 +534,58 @@ Dataframe *cargarCSV(char *nombreFichero)
             token = strtok(NULL, ",");
             i++;
         }
+    } else {
+        // Si no hay segunda fila, inicializar todo como TEXTO por defecto
+        for (int i = 0; i < df->numColumnas; i++) {
+            df->columnas[i].tipo = TEXTO;
+            df->columnas[i].datos = malloc(1000 * sizeof(char *));
+            df->columnas[i].esNulo = malloc(1000 * sizeof(unsigned char));
+        }
     }
+}
 
-    fseek(archivo, posicion, SEEK_SET);
+static void leerDatos(FILE *archivo, Dataframe *df) {
+    char buffer[1024];
+    int numFilas = 0;
 
-    // Contar filas en el archivo
-    while (fgets(buffer, sizeof(buffer), archivo))
-    {
-        numFilas++;
-    }
-    df->numFilas = numFilas;
+    while (fgets(buffer, sizeof(buffer), archivo)) {
+        printf("Leyendo fila %d: %s", numFilas, buffer); // Debug: Mostrar la fila leída
 
-    // Inicializar el array `indice`
-    df->indice = malloc(numFilas * sizeof(int));
-    for (int i = 0; i < numFilas; i++) {
-        df->indice[i] = i; // Inicializar con valores consecutivos
-    }
-
-    // Volver a procesar el archivo para leer los datos
-    fseek(archivo, posicion, SEEK_SET);
-    numFilas = 0; // Reiniciar contador de filas
-
-    while (fgets(buffer, sizeof(buffer), archivo))
-    {
+        char *token = strtok(buffer, ",");
         int i = 0;
-        char *inicio = buffer;
-        char *fin;
 
-        while ((fin = strchr(inicio, ',')) || *inicio != '\n')
-        {
-            if (fin)
-            {
-                *fin = '\0'; // Terminar la cadena en la coma
-            }
+        while (token && i < df->numColumnas) {
+            token[strcspn(token, "\r\n")] = '\0'; // Limpiar saltos de línea
 
-            // Verificar si el valor está vacío
-            if (inicio[0] == '\0')
-            {
-                df->columnas[i].esNulo[numFilas] = 1; // Marcar como nulo
-            }
-            else
-            {
-                // Validar tipo de dato según la columna
-                if (df->columnas[i].tipo == NUMERICO && esNumerico(inicio))
-                {
-                    ((int *)df->columnas[i].datos)[numFilas] = atoi(inicio);
-                    df->columnas[i].esNulo[numFilas] = 0;
-                }
-                else if (df->columnas[i].tipo == FECHA && esFecha(inicio))
-                {
-                    ((char **)df->columnas[i].datos)[numFilas] = strtok(strdup(inicio), "\n");
-                    df->columnas[i].esNulo[numFilas] = 0;
-                }
-                else if (df->columnas[i].tipo == TEXTO)
-                {
-                    inicio[strcspn(inicio, "\r\n")] = '\0';
-                    if (esTexto(inicio))
-                    {
-                        ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
-                        df->columnas[i].esNulo[numFilas] = 0;
-                    }
-                    else
-                    {
-                        df->columnas[i].esNulo[numFilas] = 1;
-                    }
-                }
-                else
-                {
-                    df->columnas[i].esNulo[numFilas] = 1; // Tipo incorrecto
+            if (token[0] == '\0') {
+                df->columnas[i].esNulo[numFilas] = 1;
+                printf("\tColumna %d: NULO\n", i); // Debug: Mostrar columna nula
+            } else {
+                df->columnas[i].esNulo[numFilas] = 0;
+                if (df->columnas[i].tipo == NUMERICO) {
+                    ((int *)df->columnas[i].datos)[numFilas] = atoi(token);
+                    printf("\tColumna %d: NUMERICO = %d\n", i, atoi(token)); // Debug: Mostrar valor numérico
+                } else if (df->columnas[i].tipo == FECHA) {
+                    ((char **)df->columnas[i].datos)[numFilas] = strdup(token);
+                    printf("\tColumna %d: FECHA = %s\n", i, token); // Debug: Mostrar valor fecha
+                } else {
+                    ((char **)df->columnas[i].datos)[numFilas] = strdup(token);
+                    printf("\tColumna %d: TEXTO = %s\n", i, token); // Debug: Mostrar valor texto
                 }
             }
-
-            if (fin)
-            {
-                inicio = fin + 1; // Avanzar al próximo token
-            }
-            else
-            {
-                break; // Fin de la fila
-            }
+            token = strtok(NULL, ",");
             i++;
         }
         numFilas++;
     }
 
-    fclose(archivo);
-    return df;
+    df->numFilas = numFilas;
+    df->indice = malloc(numFilas * sizeof(int));
+    for (int i = 0; i < numFilas; i++) {
+        df->indice[i] = i;
+    }
 }
 
-// funcion para mostrar las primeras 'n' filas del dataframe
 void viewDataframe(Dataframe *df, int n) {
     if (!df) {
         printf("\033[0;31mError: no hay dataframe activo.\033[0m\n");
