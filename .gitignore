@@ -1,0 +1,5 @@
+touch .gitignore
+# Ignorar archivos ejecutables generados por C
+a.out
+*.exe
+*.csv
