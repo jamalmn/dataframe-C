@@ -93,8 +93,8 @@ void quarterColumn(Dataframe *df, const char *col, const char *newCol); // Crear
 
 // Funciones internas estáticas
 static int contarColumnas(FILE *archivo);  // Contar columnas en un archivo CSV
-static void leerEncabezados(FILE *archivo, Dataframe *df); // Leer encabezados de un archivo CSV
-static void determinarTipos(FILE *archivo, Dataframe *df);// Determinar tipos de datos de las columnas
+static int leerEncabezados(FILE *archivo, Dataframe *df); // Leer encabezados de un archivo CSV
+static int determinarTipos(FILE *archivo, Dataframe *df);// Determinar tipos de datos de las columnas
 static void inicializarDataframe(Dataframe *df, int numCols); // Inicializar un dataframe
 static void leerDatos(FILE *archivo, Dataframe *df);        // Leer datos de un archivo CSV
 
