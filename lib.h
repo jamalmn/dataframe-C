@@ -59,6 +59,7 @@ void manejarComandoDelColum(const char *cmd);// Manejar el comando 'delcolum'
 void manejarComandoQuarter(const char *cmd);// Manejar el comando 'quarter'
 void manejarComandoDesconocido();          // Manejar comandos no válidos
 void manejarComandoName(const char *argumento);
+void manejarComandoList(); // Mostrar listado de dataframes cargados
 void finalizarPrograma();                  // Liberar memoria y finalizar el programa
 void ejecutarCicloComandos();              // Ciclo principal para manejar comandos
 
