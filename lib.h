@@ -60,10 +60,12 @@ void manejarComandoQuarter(const char *cmd);// Manejar el comando 'quarter'
 void manejarComandoDesconocido();          // Manejar comandos no válidos
 void manejarComandoName(const char *argumento);
 void manejarComandoList(); // Mostrar listado de dataframes cargados
+void manejarComandoPrefix(const char *argumento);
 void finalizarPrograma();                  // Liberar memoria y finalizar el programa
 void ejecutarCicloComandos();              // Ciclo principal para manejar comandos
 
 // *************** FUNCIONES AUXILIARES ***************
+char *strndup(const char *str, size_t n);
 
 // Gestión de memoria
 void liberarColumna(Columna *columna);     // Liberar memoria asociada a una columna
