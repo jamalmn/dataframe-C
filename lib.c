@@ -236,6 +236,114 @@ void manejarComandoDesconocido()
     printf("\033[0;31mComando no válido.\033[0m\n");
 }
 
+void manejarComandoPrefix(const char *argumento)
+{
+    if (!dataframeActivo)
+    {
+        printf("\033[0;31mError: No hay un dataframe activo.\033[0m\n");
+        return;
+    }
+
+    char nombreColumna[30], nuevaColumna[30];
+    int n;
+
+    // Parsear los argumentos
+    if (sscanf(argumento, "%s %d %s", nombreColumna, &n, nuevaColumna) != 3)
+    {
+        printf("\033[0;31mError: Parámetros incorrectos. Uso: prefix <columna> n <nueva_columna>.\033[0m\n");
+        return;
+    }
+
+    if (n <= 0)
+    {
+        printf("\033[0;31mError: 'n' debe ser mayor que 0.\033[0m\n");
+        return;
+    }
+
+    // Verificar que la columna exista y sea de tipo TEXTO
+    int columnaIndex = -1;
+    for (int i = 0; i < dataframeActivo->numColumnas; i++)
+    {
+        if (strcmp(dataframeActivo->columnas[i].nombre, nombreColumna) == 0)
+        {
+            columnaIndex = i;
+            break;
+        }
+    }
+
+    if (columnaIndex == -1)
+    {
+        printf("\033[0;31mError: La columna '%s' no existe.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    if (dataframeActivo->columnas[columnaIndex].tipo != TEXTO)
+    {
+        printf("\033[0;31mError: La columna '%s' no es de tipo TEXTO.\033[0m\n", nombreColumna);
+        return;
+    }
+
+    // Verificar que el nombre de la nueva columna no exista
+    for (int i = 0; i < dataframeActivo->numColumnas; i++)
+    {
+        if (strcmp(dataframeActivo->columnas[i].nombre, nuevaColumna) == 0)
+        {
+            printf("\033[0;31mError: Ya existe una columna con el nombre '%s'.\033[0m\n", nuevaColumna);
+            return;
+        }
+    }
+
+    // Crear espacio para la nueva columna
+    Columna *nuevasColumnas = realloc(dataframeActivo->columnas, (dataframeActivo->numColumnas + 1) * sizeof(Columna));
+    if (!nuevasColumnas)
+    {
+        printf("\033[0;31mError: No se pudo asignar memoria para la nueva columna.\033[0m\n");
+        return;
+    }
+
+    dataframeActivo->columnas = nuevasColumnas;
+    Columna *nuevaColumnaPtr = &dataframeActivo->columnas[dataframeActivo->numColumnas];
+    dataframeActivo->numColumnas++;
+
+    // Inicializar la nueva columna
+    strncpy(nuevaColumnaPtr->nombre, nuevaColumna, sizeof(nuevaColumnaPtr->nombre) - 1);
+    nuevaColumnaPtr->nombre[sizeof(nuevaColumnaPtr->nombre) - 1] = '\0';
+    nuevaColumnaPtr->tipo = TEXTO;
+    nuevaColumnaPtr->datos = calloc(dataframeActivo->numFilas, sizeof(char *));
+    nuevaColumnaPtr->esNulo = calloc(dataframeActivo->numFilas, sizeof(unsigned char));
+
+    if (!nuevaColumnaPtr->datos || !nuevaColumnaPtr->esNulo)
+    {
+        printf("\033[0;31mError: No se pudo asignar memoria para los datos de la nueva columna.\033[0m\n");
+        free(nuevaColumnaPtr->datos);
+        free(nuevaColumnaPtr->esNulo);
+        return;
+    }
+
+    // Llenar la nueva columna con los prefijos
+    Columna *columnaOriginal = &dataframeActivo->columnas[columnaIndex];
+    for (int i = 0; i < dataframeActivo->numFilas; i++)
+    {
+        int filaReal = dataframeActivo->indice[i];
+
+        if (columnaOriginal->esNulo[filaReal])
+        {
+            nuevaColumnaPtr->esNulo[filaReal] = 1;
+            ((char **)nuevaColumnaPtr->datos)[filaReal] = strdup("#N/A");
+        }
+        else
+        {
+            char *valorOriginal = ((char **)columnaOriginal->datos)[filaReal];
+            int len = strlen(valorOriginal);
+            char *prefijo = strndup(valorOriginal, (n < len) ? n : len);
+            ((char **)nuevaColumnaPtr->datos)[filaReal] = prefijo;
+            nuevaColumnaPtr->esNulo[filaReal] = 0;
+        }
+    }
+
+    printf("\033[0;32mLa nueva columna '%s' ha sido creada correctamente.\033[0m\n", nuevaColumna);
+}
+
 // *******************************************************
 // ************** FUNCIONES AUXILIARES ******************
 // *******************************************************
@@ -460,6 +568,22 @@ int esTexto(char *str)
     }
 
     return 1; // es texto valido
+}
+
+char *strndup(const char *str, size_t n) {
+    size_t len = strlen(str);
+    if (n < len) {
+        len = n;
+    }
+
+    char *result = (char *)malloc(len + 1); // +1 para el terminador null
+    if (!result) {
+        return NULL;
+    }
+
+    strncpy(result, str, len);
+    result[len] = '\0'; // Asegurarse de que está terminado con null
+    return result;
 }
 
 // *******************************************************
@@ -1508,6 +1632,10 @@ void ejecutarCicloComandos()
         else if (strcmp(comando, "list") == 0)
         {
             manejarComandoList();
+        }
+        else if (strncmp(comando, "prefix", 6) == 0)
+        {
+            manejarComandoPrefix(comando + 7);
         }
 
         else
