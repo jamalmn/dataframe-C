@@ -212,6 +212,25 @@ void manejarComandoName(const char *argumento)
     printf("\033[0;32mEl nombre del dataframe ha sido cambiado a '%s'.\033[0m\n", dataframeActivo->nombre);
 }
 
+void manejarComandoList()
+{
+    if (listaDataframes.numDFs == 0)
+    {
+        printf("\033[0;31mNo hay dataframes cargados en memoria.\033[0m\n");
+        return;
+    }
+
+    printf("\033[1;34mListado de dataframes cargados:\033[0m\n");
+    Nodo *actual = listaDataframes.primero;
+
+    while (actual)
+    {
+        Dataframe *df = actual->df;
+        printf("\033[0;32m%s: %d filas, %d columnas\033[0m\n", df->nombre, df->numFilas, df->numColumnas);
+        actual = actual->siguiente;
+    }
+}
+
 void manejarComandoDesconocido()
 {
     printf("\033[0;31mComando no válido.\033[0m\n");
@@ -1485,6 +1504,10 @@ void ejecutarCicloComandos()
         else if (strncmp(comando, "name", 4) == 0)
         {
             manejarComandoName(comando + 5);
+        }
+        else if (strcmp(comando, "list") == 0)
+        {
+            manejarComandoList();
         }
 
         else
