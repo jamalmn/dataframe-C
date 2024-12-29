@@ -1188,7 +1188,7 @@ void saveDataframe(Dataframe *df, const char *nombreFichero)
             {
                 if (df->columnas[col].tipo == NUMERICO)
                 {
-                    fprintf(archivo, "%d", ((int *)df->columnas[col].datos)[filaReal]);
+                    fprintf(archivo, "%.2f", ((float *)df->columnas[col].datos)[filaReal]);
                 }
                 else if (df->columnas[col].tipo == TEXTO || df->columnas[col].tipo == FECHA)
                 {
