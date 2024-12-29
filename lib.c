@@ -6,19 +6,15 @@
 #include "lib.h"
 
 // *******************************************************
+// *************** VARIABLES GLOBALES *******************
 // *******************************************************
-// ******* FUNCIONES PARA EL FLUJO DE DATOS (MAIN)********
+Dataframe *dataframeActivo = NULL; // Puntero al dataframe activo
+int indiceDataframe = -1;          // Índice del dataframe activo
+Lista listaDataframes = {0, NULL}; // Lista de dataframes en memoria
+
 // *******************************************************
-
-// Puntero global al Dataframe activo. Inicialmente es NULL hasta que se cargue un dataframe.
-// Esto permite acceder al dataframe actualmente en uso en todo el programa.
-Dataframe *dataframeActivo = NULL;
-
-// Índice del dataframe activo. Inicialmente es -1, indicando que no hay dataframe cargado.
-// A medida que se cargan nuevos dataframes, este índice se incrementa para hacer referencia al dataframe actual.
-int indiceDataframe = -1;
-
-// Mostrar el prompt personalizado basado en el estado del programa
+// *********** FUNCIONES DE INICIALIZACIÓN **************
+// *******************************************************
 void mostrarPromptDataframe() {
     if (dataframeActivo != NULL) {
         printf("[df%d: %d filas, %d columnas]:> ", indiceDataframe, dataframeActivo->numFilas, dataframeActivo->numColumnas);
@@ -28,7 +24,6 @@ void mostrarPromptDataframe() {
     fflush(stdout);
 }
 
-// Inicialización del programa
 void inicializarPrograma() {
     // Título del programa en azul y negrita
     printf("\033[1;34m=== \033[1;37mPROGRAMA DE MANEJO DE DATAFRAMES \033[1;34m===\033[0m\n\n");
@@ -41,7 +36,10 @@ void inicializarPrograma() {
     printf("\033[1;37m\033[48;5;235mCORREO: \033[1;36mjamal.menchi@goumh.umh.es\033[0m\n\n");
 }
 
-// Manejar el comando "load"
+// *******************************************************
+// ************** FUNCIONES DE COMANDOS *****************
+// *******************************************************
+
 void manejarComandoLoad(const char *argumento) {
     char nombreFichero[100];
     if (sscanf(argumento, "%s", nombreFichero) == 1) {
@@ -57,15 +55,16 @@ void manejarComandoLoad(const char *argumento) {
     }
 }
 
-// Manejar el comando "view"
 void manejarComandoView(const char *argumento) {
     int numFilas = 10;
     if (dataframeActivo != NULL) {
         if (sscanf(argumento, "%d", &numFilas) == 1) {
-            if (numFilas <= 0) {
-                printf("\033[0;31mEl número de filas debe ser mayor que 0.\033[0m\n");
-            } else {
+            if (numFilas < 0) {
+                viewDataframe(dataframeActivo, numFilas); // Manejo de negativos
+            } else if (numFilas > 0) {
                 viewDataframe(dataframeActivo, numFilas);
+            } else {
+                printf("\033[0;31mEl número de filas debe ser distinto de 0.\033[0m\n");
             }
         } else {
             viewDataframe(dataframeActivo, 10); // Valor predeterminado
@@ -75,7 +74,7 @@ void manejarComandoView(const char *argumento) {
     }
 }
 
-// Manejar el comando "meta"
+
 void manejarComandoMeta() {
     if (dataframeActivo) {
         mostrarMetadatos(dataframeActivo);
@@ -84,7 +83,6 @@ void manejarComandoMeta() {
     }
 }
 
-// Manejar el comando "sort"
 void manejarComandoSort(const char *comando) {
     char nombreColumna[100];
     char orden[4] = "asc";  // Por defecto, ascendente
@@ -99,7 +97,6 @@ void manejarComandoSort(const char *comando) {
     sortDataframe(dataframeActivo, comando);
 }
 
-// Manejar el comando "save"
 void manejarComandoSave(const char *comando) {
     char nombreFichero[100];
     if (sscanf(comando, "%s", nombreFichero) == 1) {
@@ -108,24 +105,22 @@ void manejarComandoSave(const char *comando) {
         printf("\033[0;31mError: debe especificar el nombre del archivo.\033[0m\n");
     }
 }
-// Manejar el comando "filter"
+
 void manejarComandoFilter(const char *comando) {
     // Lógica para procesar el comando filter, como obtener la columna, operador y valor
     filterDataframe(dataframeActivo, comando);
 }
 
-// Manejar el comando "delnull"
 void manejarComandoDelNull(const char *comando) {
     // Obtener el nombre de la columna y eliminar las filas con valores nulos
     delNull(dataframeActivo, comando);
 }
-// Manejar el comando "delcolum"
+
 void manejarComandoDelColum(const char *comando) {
     // Obtener el nombre de la columna y eliminarla del dataframe
     delColumn(dataframeActivo, comando);
 }
 
-// Manejar el comando "quarter"
 void manejarComandoQuarter(const char *comando) {
     char nombreColumna[100];
     char nombreNuevaColumna[100];
@@ -137,76 +132,13 @@ void manejarComandoQuarter(const char *comando) {
     }
 }
 
-// Manejar comandos desconocidos
 void manejarComandoDesconocido() {
     printf("\033[0;31mComando no válido.\033[0m\n");
 }
 
-// Liberar memoria y finalizar
-void finalizarPrograma() {
-    printf("\033[0;32mEXIT PROGRAM\033[0m\n");
-    liberarMemoria();
-}
-
-// Ciclo principal para manejar los comandos del usuario
-void ejecutarCicloComandos() {
-    char comando[256];
-    while (1) {
-        mostrarPromptDataframe();
-
-        // Leer comando del usuario
-        fgets(comando, sizeof(comando), stdin);
-
-        // Eliminar el salto de línea '\n' al final del comando
-        comando[strcspn(comando, "\n")] = 0;
-
-        // Manejar comandos específicos
-        if (strcmp(comando, "quit") == 0) {
-            finalizarPrograma();
-            break;
-        } else if (strncmp(comando, "load", 4) == 0) {
-            manejarComandoLoad(comando + 5);
-        } else if (strncmp(comando, "view", 4) == 0) {
-            manejarComandoView(comando + 5);
-        } else if (strcmp(comando, "meta") == 0) {
-            manejarComandoMeta();
-        }  // Comando sort
-        else if (strncmp(comando, "sort", 4) == 0) {
-            manejarComandoSort(comando + 5);  // Pasar el comando sin "sort"
-        }
-        else if (strncmp(comando, "save", 4) == 0) {
-            manejarComandoSave(comando + 5);  // Pasar el comando sin "save"
-        }
-        else if (strncmp(comando, "filter", 6) == 0) {
-            manejarComandoFilter(comando + 7);  // Pasar el comando sin "filter"
-        }
-        // Comando delnull
-        else if (strncmp(comando, "delnull", 7) == 0) {
-            manejarComandoDelNull(comando + 8);  // Pasar el comando sin "delnull"
-        }
-        // Comando delcolum
-        else if (strncmp(comando, "delcolum", 8) == 0) {
-            manejarComandoDelColum(comando + 9);  // Pasar el comando sin "delcolum"
-        }
-        // Comando quarter
-        else if (strncmp(comando, "quarter", 7) == 0) {
-            manejarComandoQuarter(comando + 8);  // Pasar el comando sin "quarter"
-        } 
-        else {
-            manejarComandoDesconocido();
-        }
-    }
-}
-
-// ********************************************************
-// FUNCIONES PARA LA LOGICA DE LOS COMANDOS ***************
-// ********************************************************
-
-// estructura global para manejar la lista de dataframes
-Lista listaDataframes = {0, NULL};
-
-// gestion de la memoria dinamica
-// liberar memoria asociada a una columna
+// *******************************************************
+// ************** FUNCIONES AUXILIARES ******************
+// *******************************************************
 void liberarColumna(Columna *columna)
 {
     if (columna)
@@ -223,7 +155,7 @@ void liberarColumna(Columna *columna)
         }
     }
 }
-// liberar memoria asociada a un dataframe
+
 void liberarDataframe(Dataframe *df)
 {
     if (df)
@@ -247,7 +179,7 @@ void liberarDataframe(Dataframe *df)
         free(df);
     }
 }
-// liberar toda la lista de dataframes
+
 void liberarMemoriaLista()
 {
     Nodo *actual = listaDataframes.primero;
@@ -264,14 +196,12 @@ void liberarMemoriaLista()
     listaDataframes.numDFs = 0;     // reiniciar el contador de dataframes
 }
 
-// liberar toda memoria usada por el programa
 void liberarMemoria()
 {
     liberarMemoriaLista();
     printf("memoria liberada correctamente\n");
 }
 
-// funcion que valida si es numerico
 int esNumerico(const char *str)
 {
     int i = 0;
@@ -309,7 +239,6 @@ int esNumerico(const char *str)
     return tieneDigito;
 }
 
-// funcion que valida si es fecha
 int esBisiesto(int anio)
 {
     return (anio % 4 == 0 && (anio % 100 != 0 || anio % 400 == 0));
@@ -378,7 +307,7 @@ int esFecha(char *str)
 
     return 1; // Fecha válida
 }
-// Función para convertir una fecha en formato YYYY-MM-DD a struct tm
+
 int parseFecha(const char *str, struct tm *fecha) {
     // Usamos sscanf para descomponer la fecha en año, mes y día
     int anio, mes, dia;
@@ -429,6 +358,9 @@ int esTexto(char *str)
     return 1; // es texto valido
 }
 
+// *******************************************************
+// *********** FUNCIONES DE MANEJO DE CSV ***************
+// *******************************************************
 Dataframe *cargarCSV(char *nombreFichero) {
     FILE *archivo = fopen(nombreFichero, "r");
     if (!archivo) {
@@ -533,7 +465,14 @@ static void leerEncabezados(FILE *archivo, Dataframe *df) {
         int i = 0;
         while (token && i < df->numColumnas) {
             token[strcspn(token, "\r\n")] = '\0'; // Limpiar saltos de línea
-            strncpy(df->columnas[i].nombre, token, sizeof(df->columnas[i].nombre) - 1);
+
+            // Asignar nombre predeterminado si está vacío
+            if (strlen(token) == 0) {
+                snprintf(df->columnas[i].nombre, sizeof(df->columnas[i].nombre), "Columna%d", i + 1);
+            } else {
+                strncpy(df->columnas[i].nombre, token, sizeof(df->columnas[i].nombre) - 1);
+            }
+            df->columnas[i].nombre[sizeof(df->columnas[i].nombre) - 1] = '\0'; // Asegurar terminación
             token = strtok(NULL, ",");
             i++;
         }
@@ -645,8 +584,19 @@ void viewDataframe(Dataframe *df, int n) {
         return;
     }
 
-    if (n > df->numFilas)
+    int start = 0, end = n, step = 1;
+
+    if (n < 0) {
+        n = -n;
+        if (n > df->numFilas)
+            n = df->numFilas;
+
+        start = df->numFilas - 1;
+        end = df->numFilas - n - 1;
+        step = -1;
+    } else if (n > df->numFilas) {
         n = df->numFilas;
+    }
 
     // Crear una línea divisoria para la tabla
     printf("+");
@@ -673,8 +623,8 @@ void viewDataframe(Dataframe *df, int n) {
     }
     printf("\n");
 
-    // Mostrar las primeras 'n' filas respetando el índice
-    for (int i = 0; i < n; i++) {
+    // Mostrar filas respetando el índice
+    for (int i = start; i != end; i += step) {
         int filaReal = df->indice[i]; // Usar el índice para acceder a las filas reales
         printf("|"); // Comienzo de la fila
         for (int col = 0; col < df->numColumnas; col++) {
@@ -701,7 +651,6 @@ void viewDataframe(Dataframe *df, int n) {
     printf("\n");
 }
 
-// Función para mostrar metadatos del dataframe
 void mostrarMetadatos(Dataframe *df)
 {
     if (!df)
@@ -1216,4 +1165,69 @@ void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreN
 
     df->numColumnas++;
     printf("\033[0;32mLa columna '%s' ha sido creada correctamente.\033[0m\n", nombreNuevaColumna);
+}
+
+
+
+
+
+
+
+
+
+// *******************************************************
+// *********** FUNCIONES DE FLUJO PRINCIPAL *************
+// *******************************************************
+void finalizarPrograma() {
+    printf("\033[0;32mEXIT PROGRAM\033[0m\n");
+    liberarMemoria();
+}
+
+void ejecutarCicloComandos() {
+    char comando[256];
+    while (1) {
+        mostrarPromptDataframe();
+
+        // Leer comando del usuario
+        fgets(comando, sizeof(comando), stdin);
+
+        // Eliminar el salto de línea '\n' al final del comando
+        comando[strcspn(comando, "\n")] = 0;
+
+        // Manejar comandos específicos
+        if (strcmp(comando, "quit") == 0) {
+            finalizarPrograma();
+            break;
+        } else if (strncmp(comando, "load", 4) == 0) {
+            manejarComandoLoad(comando + 5);
+        } else if (strncmp(comando, "view", 4) == 0) {
+            manejarComandoView(comando + 5);
+        } else if (strcmp(comando, "meta") == 0) {
+            manejarComandoMeta();
+        }  // Comando sort
+        else if (strncmp(comando, "sort", 4) == 0) {
+            manejarComandoSort(comando + 5);  // Pasar el comando sin "sort"
+        }
+        else if (strncmp(comando, "save", 4) == 0) {
+            manejarComandoSave(comando + 5);  // Pasar el comando sin "save"
+        }
+        else if (strncmp(comando, "filter", 6) == 0) {
+            manejarComandoFilter(comando + 7);  // Pasar el comando sin "filter"
+        }
+        // Comando delnull
+        else if (strncmp(comando, "delnull", 7) == 0) {
+            manejarComandoDelNull(comando + 8);  // Pasar el comando sin "delnull"
+        }
+        // Comando delcolum
+        else if (strncmp(comando, "delcolum", 8) == 0) {
+            manejarComandoDelColum(comando + 9);  // Pasar el comando sin "delcolum"
+        }
+        // Comando quarter
+        else if (strncmp(comando, "quarter", 7) == 0) {
+            manejarComandoQuarter(comando + 8);  // Pasar el comando sin "quarter"
+        } 
+        else {
+            manejarComandoDesconocido();
+        }
+    }
 }
