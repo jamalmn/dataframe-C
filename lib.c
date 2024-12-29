@@ -593,6 +593,19 @@ char *strndup(const char *str, size_t n) {
     return result;
 }
 
+int contarComas(const char *buffer) {
+    int contador = 0;
+
+    // Recorrer la cadena caracter por caracter
+    while (*buffer != '\0') {
+        if (*buffer == ',') {
+            contador++;
+        }
+        buffer++;
+    }
+
+    return contador;
+}
 // *******************************************************
 // *********** FUNCIONES DE MANEJO DE CSV ***************
 // *******************************************************
@@ -633,10 +646,20 @@ Dataframe *cargarCSV(char *nombreFichero)
     fseek(archivo, 0, SEEK_SET); // Reset pointer to start
 
     // Leer encabezados
-    leerEncabezados(archivo, df);
+    if(leerEncabezados(archivo, df)==0){
+        printf("\033[0;31mError: En el encabezado del archivo no puede haber nulos.\033[0m\n");
+        free(df);
+        fclose(archivo);
+        return NULL;
+    }
 
     // Determinar tipos de datos
-    determinarTipos(archivo, df);
+    if(determinarTipos(archivo, df)==0){
+        printf("\033[0;31mError: La primera linea de datos (segunda del fichero) no debe contener nulos.\033[0m\n");
+        free(df);
+        fclose(archivo);
+        return NULL;
+    }
 
     // Debug: Confirm pointer after skipping headers
     char debugBuffer[1024];
@@ -699,7 +722,7 @@ static void inicializarDataframe(Dataframe *df, int numColumnas)
     }
 }
 
-static void leerEncabezados(FILE *archivo, Dataframe *df)
+static int  leerEncabezados(FILE *archivo, Dataframe *df)
 {
     char buffer[1024];
 
@@ -714,7 +737,7 @@ static void leerEncabezados(FILE *archivo, Dataframe *df)
             // Asignar nombre predeterminado si está vacío
             if (strlen(token) == 0)
             {
-                snprintf(df->columnas[i].nombre, sizeof(df->columnas[i].nombre), "Columna%d", i + 1);
+                return 0;
             }
             else
             {
@@ -725,19 +748,30 @@ static void leerEncabezados(FILE *archivo, Dataframe *df)
             i++;
         }
     }
+
+    return 1;
 }
 
-static void determinarTipos(FILE *archivo, Dataframe *df)
+static int determinarTipos(FILE *archivo, Dataframe *df)
 {
     char buffer[1024];
 
     if (fgets(buffer, sizeof(buffer), archivo))
     {
+        if(contarComas(buffer) != df->numColumnas-1){
+            return 0;
+        }
         char *token = strtok(buffer, ",");
         int i = 0;
+        
         while (token && i < df->numColumnas)
         {
-            if (esNumerico(token))
+            token[strcspn(token, " \t\r\n")] = '\0';
+
+
+            if(token[0] == '\0'){
+                return 0;
+            }else if (esNumerico(token))
             {
                 df->columnas[i].tipo = NUMERICO;
                 df->columnas[i].datos = malloc(df->numFilas * sizeof(float));
@@ -767,6 +801,7 @@ static void determinarTipos(FILE *archivo, Dataframe *df)
             df->columnas[i].esNulo = malloc(df->numFilas * sizeof(unsigned char));
         }
     }
+    return 1;
 }
 
 static void leerDatos(FILE *archivo, Dataframe *df)
@@ -774,28 +809,42 @@ static void leerDatos(FILE *archivo, Dataframe *df)
     char buffer[1024];
     int numFilas = 0;
 
-    // Read rows one by one
+    // Leer las filas del archivo una por una
     while (fgets(buffer, sizeof(buffer), archivo))
     {
-        char *token = strtok(buffer, ",");
+        char *inicio = buffer;
         int i = 0;
 
-        while (token && i < df->numColumnas)
+        while (i < df->numColumnas)
         {
-            token[strcspn(token, "\r\n")] = '\0'; 
+            char *fin = strchr(inicio, ','); // Buscar la siguiente coma
 
-            if (token[0] == '\0')
+            // Manejar el caso de la última columna
+            if (fin == NULL)
+            {
+                fin = inicio + strlen(inicio); // Tomar hasta el final de la línea
+            }
+            else
+            {
+                *fin = '\0'; // Terminar el token actual
+            }
+
+            // Remover espacios en blanco y saltos de línea al final
+            inicio[strcspn(inicio, " \t\r\n")] = '\0';
+
+            if (inicio[0] == '\0') // Detectar valores nulos
             {
                 df->columnas[i].esNulo[numFilas] = 1;
             }
             else
             {
                 df->columnas[i].esNulo[numFilas] = 0;
+
                 if (df->columnas[i].tipo == NUMERICO)
                 {
-                    if (esNumerico(token))
+                    if (esNumerico(inicio))
                     {
-                        ((float *)df->columnas[i].datos)[numFilas] = atof(token);
+                        ((float *)df->columnas[i].datos)[numFilas] = atof(inicio);
                     }
                     else
                     {
@@ -804,9 +853,9 @@ static void leerDatos(FILE *archivo, Dataframe *df)
                 }
                 else if (df->columnas[i].tipo == FECHA)
                 {
-                    if (esFecha(token))
+                    if (esFecha(inicio))
                     {
-                        ((char **)df->columnas[i].datos)[numFilas] = strdup(token);
+                        ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
                     }
                     else
                     {
@@ -815,17 +864,12 @@ static void leerDatos(FILE *archivo, Dataframe *df)
                 }
                 else
                 {
-                    if (esNumerico(token))
-                    {
-                        df->columnas[i].esNulo[numFilas] = 1;
-                    }
-                    else
-                    {
-                        ((char **)df->columnas[i].datos)[numFilas] = strdup(token);
-                    }
+                    ((char **)df->columnas[i].datos)[numFilas] = strdup(inicio);
                 }
             }
-            token = strtok(NULL, ",");
+
+            // Avanzar al siguiente valor
+            inicio = fin + 1; 
             i++;
         }
         numFilas++;
