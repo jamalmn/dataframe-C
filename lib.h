@@ -25,6 +25,7 @@ typedef struct {
     int numColumnas;         // Número de columnas en el dataframe
     int numFilas;            // Número de filas (igual para todas las columnas)
     int *indice;             // Array para ordenar las filas
+    char nombre[51]; // Nombre del dataframe
 } Dataframe;
 
 // Alias para tipos FECHA: 'Fecha' alias de 'struct tm' (#include <time.h>)
@@ -57,6 +58,7 @@ void manejarComandoDelNull(const char *cmd);// Manejar el comando 'delnull'
 void manejarComandoDelColum(const char *cmd);// Manejar el comando 'delcolum'
 void manejarComandoQuarter(const char *cmd);// Manejar el comando 'quarter'
 void manejarComandoDesconocido();          // Manejar comandos no válidos
+void manejarComandoName(const char *argumento);
 void finalizarPrograma();                  // Liberar memoria y finalizar el programa
 void ejecutarCicloComandos();              // Ciclo principal para manejar comandos
 
