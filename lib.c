@@ -609,6 +609,13 @@ int contarComas(const char *buffer) {
 // *******************************************************
 // *********** FUNCIONES DE MANEJO DE CSV ***************
 // *******************************************************
+// Funciones internas (solo visibles en este fichero)
+static int contarColumnas(FILE *archivo);
+static int leerEncabezados(FILE *archivo, Dataframe *df);
+static int determinarTipos(FILE *archivo, Dataframe *df);
+static void inicializarDataframe(Dataframe *df, int numColumnas);
+static void leerDatos(FILE *archivo, Dataframe *df);
+
 Dataframe *cargarCSV(char *nombreFichero)
 {
     FILE *archivo = fopen(nombreFichero, "r");

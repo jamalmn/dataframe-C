@@ -4,7 +4,7 @@
 #include "lib.h"
 
 // Función principal
-int main(int argc, char *argv[]) {
+int main(void) {
     inicializarPrograma();
     ejecutarCicloComandos();
     return 0;
