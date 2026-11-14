@@ -316,8 +316,9 @@ void manejarComandoPrefix(const char *argumento)
     strncpy(nuevaColumnaPtr->nombre, nuevaColumna, sizeof(nuevaColumnaPtr->nombre) - 1);
     nuevaColumnaPtr->nombre[sizeof(nuevaColumnaPtr->nombre) - 1] = '\0';
     nuevaColumnaPtr->tipo = TEXTO;
-    nuevaColumnaPtr->datos = calloc(dataframeActivo->numFilas, sizeof(char *));
-    nuevaColumnaPtr->esNulo = calloc(dataframeActivo->numFilas, sizeof(unsigned char));
+    nuevaColumnaPtr->numFilas = dataframeActivo->capacidad;
+    nuevaColumnaPtr->datos = calloc(dataframeActivo->capacidad, sizeof(char *));
+    nuevaColumnaPtr->esNulo = calloc(dataframeActivo->capacidad, sizeof(unsigned char));
 
     if (!nuevaColumnaPtr->datos || !nuevaColumnaPtr->esNulo)
     {
@@ -361,6 +362,12 @@ void liberarColumna(Columna *columna)
         // liberar los datos almacenados en la columna segun su tipo
         if (columna->datos)
         {
+            if (columna->tipo != NUMERICO)
+            {
+                // TEXTO y FECHA guardan punteros a cadenas reservadas con strdup
+                for (int i = 0; i < columna->numFilas; i++)
+                    free(((char **)columna->datos)[i]);
+            }
             free(columna->datos);
         }
         // liberar el array esNulo
@@ -650,6 +657,7 @@ Dataframe *cargarCSV(char *nombreFichero)
 
     // Contar Filas
     df->numFilas = contarFilas(archivo) - 1;
+    df->capacidad = df->numFilas;
     fseek(archivo, 0, SEEK_SET); // Reset pointer to start
 
     // Leer encabezados
@@ -667,6 +675,9 @@ Dataframe *cargarCSV(char *nombreFichero)
         fclose(archivo);
         return NULL;
     }
+
+    for (int i = 0; i < df->numColumnas; i++)
+        df->columnas[i].numFilas = df->capacidad;
 
     // Debug: Confirm pointer after skipping headers
     char debugBuffer[1024];
@@ -786,12 +797,12 @@ static int determinarTipos(FILE *archivo, Dataframe *df)
             else if (esFecha(token))
             {
                 df->columnas[i].tipo = FECHA;
-                df->columnas[i].datos = malloc(df->numFilas * sizeof(char *));
+                df->columnas[i].datos = calloc(df->numFilas, sizeof(char *));
             }
             else
             {
                 df->columnas[i].tipo = TEXTO;
-                df->columnas[i].datos = malloc(df->numFilas * sizeof(char *));
+                df->columnas[i].datos = calloc(df->numFilas, sizeof(char *));
             }
             df->columnas[i].esNulo = malloc(df->numFilas * sizeof(unsigned char));
             token = strtok(NULL, ",");
@@ -804,7 +815,7 @@ static int determinarTipos(FILE *archivo, Dataframe *df)
         for (int i = 0; i < df->numColumnas; i++)
         {
             df->columnas[i].tipo = TEXTO;
-            df->columnas[i].datos = malloc(df->numFilas * sizeof(char *));
+            df->columnas[i].datos = calloc(df->numFilas, sizeof(char *));
             df->columnas[i].esNulo = malloc(df->numFilas * sizeof(unsigned char));
         }
     }
@@ -1447,16 +1458,7 @@ void delColumn(Dataframe *df, const char *nombreColumna)
     printf("[DEBUG] Eliminando columna '%s'.\n", df->columnas[columnaIndex].nombre);
 
     // Liberar la memoria asociada a la columna
-    if (df->columnas[columnaIndex].esNulo)
-    {
-        free(df->columnas[columnaIndex].esNulo);
-        df->columnas[columnaIndex].esNulo = NULL;
-    }
-    if (df->columnas[columnaIndex].datos)
-    {
-        free(df->columnas[columnaIndex].datos);
-        df->columnas[columnaIndex].datos = NULL;
-    }
+    liberarColumna(&df->columnas[columnaIndex]);
 
     // Desplazar las columnas restantes
     for (int i = columnaIndex; i < df->numColumnas - 1; i++)
@@ -1534,8 +1536,9 @@ void quarterColumn(Dataframe *df, const char *nombreColumna, const char *nombreN
     strncpy(nuevaColumna->nombre, nombreNuevaColumna, sizeof(nuevaColumna->nombre) - 1);
     nuevaColumna->nombre[sizeof(nuevaColumna->nombre) - 1] = '\0';
     nuevaColumna->tipo = TEXTO;
-    nuevaColumna->datos = calloc(df->numFilas, sizeof(char *));
-    nuevaColumna->esNulo = calloc(df->numFilas, sizeof(unsigned char));
+    nuevaColumna->numFilas = df->capacidad;
+    nuevaColumna->datos = calloc(df->capacidad, sizeof(char *));
+    nuevaColumna->esNulo = calloc(df->capacidad, sizeof(unsigned char));
     if (!nuevaColumna->datos || !nuevaColumna->esNulo)
     {
         printf("\033[0;31mError: No se pudo asignar memoria para los datos de la nueva columna.\033[0m\n");

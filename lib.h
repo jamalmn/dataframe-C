@@ -23,7 +23,8 @@ typedef struct {
 typedef struct {
     Columna *columnas;       // Array de columnas (con tipos de datos distintos)
     int numColumnas;         // Número de columnas en el dataframe
-    int numFilas;            // Número de filas (igual para todas las columnas)
+    int numFilas;            // Número de filas visibles (cambia con filter/delnull)
+    int capacidad;           // Tamaño real de los arrays de cada columna (filas cargadas)
     int *indice;             // Array para ordenar las filas
     char nombre[51]; // Nombre del dataframe
 } Dataframe;
