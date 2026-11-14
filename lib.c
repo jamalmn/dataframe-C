@@ -34,11 +34,11 @@ void inicializarPrograma()
     printf("\033[1;34m=== \033[1;37mPROGRAMA DE MANEJO DE DATAFRAMES \033[1;34m===\033[0m\n\n");
 
     // Encabezado con texto verde
-    printf("\033[1;32mDATOS DEL ALUMNO:\033[0m\n");
+    printf("\033[1;32mDATOS DEL AUTOR:\033[0m\n");
 
     // Detalles con un fondo oscuro y texto en blanco
-    printf("\033[1;37m\033[48;5;235mNOMBRE + APELLIDOS: \033[1;33mJamal Menchi Hajji\033[0m\n");
-    printf("\033[1;37m\033[48;5;235mCORREO: \033[1;36mjamal.menchi@goumh.umh.es\033[0m\n\n");
+    printf("\033[1;37m\033[48;5;235mAUTOR: \033[1;33mJamal Mencci\033[0m\n");
+    printf("\033[1;37m\033[48;5;235mLINKEDIN: \033[1;36mlinkedin.com/in/jamal-mencci/\033[0m\n\n");
 
     // Mostrar estado de los ejercicios
     printf("\033[1;32mESTADO DE LOS EJERCICIOS:\033[0m\n");
