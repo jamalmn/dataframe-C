@@ -9,3 +9,6 @@ programa
 
 # Material de la asignatura (no se redistribuye)
 *.pdf
+
+# Excepción: datos de ejemplo del repositorio
+!ejemplos/*.csv
