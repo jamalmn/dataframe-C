@@ -1,5 +1,11 @@
-touch .gitignore
-# Ignorar archivos ejecutables generados por C
-a.out
+# Binarios y artefactos de compilación
+*.o
 *.exe
+a.out
+programa
+
+# Datos de prueba y salidas
 *.csv
+
+# Material de la asignatura (no se redistribuye)
+*.pdf
