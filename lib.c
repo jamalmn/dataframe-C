@@ -890,7 +890,7 @@ void viewDataframe(Dataframe *df, int n)
         return;
     }
 
-    int start = 0, end = n, step = 1;
+    int start = 0, end, step = 1;
 
     if (n < 0)
     {
@@ -906,6 +906,8 @@ void viewDataframe(Dataframe *df, int n)
     {
         n = df->numFilas;
     }
+    if (step == 1)
+        end = n;
 
     // Crear una línea divisoria para la tabla
     printf("+");
