@@ -91,11 +91,4 @@ void delNull(Dataframe *df, const char *col); // Eliminar filas con valores nulo
 void delColumn(Dataframe *df, const char *col); // Eliminar una columna
 void quarterColumn(Dataframe *df, const char *col, const char *newCol); // Crear columna de trimestre
 
-// Funciones internas estáticas
-static int contarColumnas(FILE *archivo);  // Contar columnas en un archivo CSV
-static int leerEncabezados(FILE *archivo, Dataframe *df); // Leer encabezados de un archivo CSV
-static int determinarTipos(FILE *archivo, Dataframe *df);// Determinar tipos de datos de las columnas
-static void inicializarDataframe(Dataframe *df, int numCols); // Inicializar un dataframe
-static void leerDatos(FILE *archivo, Dataframe *df);        // Leer datos de un archivo CSV
-
 #endif // LIB_H
