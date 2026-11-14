@@ -469,7 +469,7 @@ int esFecha(char *str)
             return 0;
         }
     }
-    else if (!strlen(str) == 10)
+    else if (strlen(str) != 10)
     {
         return 0;
     }
@@ -987,7 +987,7 @@ void mostrarMetadatos(Dataframe *df)
     for (int i = 0; i < df->numColumnas; i++)
     {
         printf("\033[0;32mColumna: %s\n", df->columnas[i].nombre);
-        printf("Tipo: ", df->columnas[i].tipo);
+        printf("Tipo: ");
         switch (df->columnas[i].tipo)
         {
         case TEXTO:
