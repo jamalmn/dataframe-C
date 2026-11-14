@@ -1,60 +1,115 @@
 # dataframe-C
-# Descripción
 
-Este proyecto consiste en desarrollar un programa en **C** que gestione un conjunto de datos estructurados en forma de _dataframe_ a través de una interfaz de línea de comandos (CLI). El objetivo es implementar a bajo nivel la estructura y las operaciones básicas para manejar datos organizados en filas y columnas, soportando diferentes tipos de datos (texto, numéricos y fechas) y detectando valores nulos o anómalos.
+[![CI](https://github.com/jamalmn/dataframe-C/actions/workflows/ci.yml/badge.svg)](https://github.com/jamalmn/dataframe-C/actions/workflows/ci.yml)
+[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
+![Lenguaje: C](https://img.shields.io/badge/lenguaje-C-555555.svg)
 
----
+Mini "dataframe" al estilo pandas escrito en **C puro**, con una consola interactiva (CLI) para cargar CSV, inspeccionarlos, ordenarlos, filtrarlos y guardarlos.
+Es un proyecto de aprendizaje: implementar a bajo nivel la estructura de datos y la gestión de memoria que librerías como pandas dan ya hechas.
 
-## Funcionalidades
+## Stack
 
-- **Carga de Datos**: Permite cargar datos desde archivos CSV, mostrando errores en la CLI si se detectan valores incorrectos o nulos.
-- **Operaciones Básicas**:
-  - Obtener estadísticas básicas.
-  - Filtrar filas según condiciones específicas.
-  - Generar nuevas columnas derivadas.
-- **Gestión de Memoria**: El programa debe liberar toda la memoria dinámica al finalizar.
+- C (`gnu11`), solo librería estándar. Sin dependencias externas.
+- `make` + `gcc` (`-Wall -Wextra`, sin warnings).
+- GitHub Actions: compila en cada push y pull request.
+- `valgrind` (opcional) para comprobar la memoria.
 
----
+## Cómo compilarlo y ejecutarlo
 
-## Tipos de Datos Soportados
+```bash
+make          # genera el ejecutable ./programa
+./programa    # abre la consola interactiva
+make clean    # borra los binarios
+```
 
-- **Texto**: Cadenas de caracteres.
-- **Números**: Enteros y decimales.
-- **Fechas**: Formato `YYYY-MM-DD`.
+## Comandos
 
----
+| Comando | Qué hace |
+|---|---|
+| `load <fichero.csv>` | Carga un CSV como un nuevo dataframe (`df0`, `df1`, …) y lo activa |
+| `meta` | Columnas, tipo detectado (Texto, Numerico, Fecha) y número de nulos |
+| `view [n]` | Primeras `n` filas (10 por defecto); con `n` negativo, las últimas |
+| `sort <columna> [asc\|des]` | Ordena por una columna |
+| `filter <columna> eq\|neq\|gt\|lt <valor>` | Se queda con las filas que cumplen la condición (en texto solo `eq`/`neq`) |
+| `delnull <columna>` | Elimina las filas con nulos en esa columna |
+| `delcolum <columna>` | Elimina una columna |
+| `quarter <columna_fecha> <nueva>` | Añade una columna con el trimestre (Q1–Q4) de una fecha |
+| `prefix <columna> <n> <nueva>` | Añade una columna con los primeros `n` caracteres de un texto |
+| `save <fichero.csv>` | Guarda el dataframe activo |
+| `name <nombre>` / `list` | Renombra el dataframe activo / lista los cargados |
+| `quit` | Libera la memoria y sale |
 
-## Estructuras de Datos
+Formato de entrada: CSV con cabecera, separado por comas. El tipo de cada columna se deduce de la primera fila de datos; las fechas usan `YYYY-MM-DD`.
 
-- **`TipoDato`**: Enumeración para representar los diferentes tipos de datos.
-- **`Columna`**: Estructura para representar una columna del dataframe.
-- **`Dataframe`**: Estructura principal que representa un conjunto de datos.
-- **`Lista`**: Estructura para manejar múltiples dataframes.
+## Ejemplo de sesión
 
----
+Con el CSV de ejemplo [`ejemplos/empleados.csv`](ejemplos/empleados.csv) (datos ficticios). La salida real incluye colores ANSI y trazas `[DEBUG]` del filtro, que aquí se resumen con `…`:
 
-## Comandos Disponibles
+```text
+[?]:> load ejemplos/empleados.csv
+Archivo ejemplos/empleados.csv cargado correctamente como 'df0'.
+[df0: 4 filas, 4 columnas]:> sort salario des
+El dataframe ha sido ordenado por la columna 'salario' en orden des.
+[df0: 4 filas, 4 columnas]:> view
++-----------------+-----------------+-----------------+-----------------+
+| nombre          | edad            | fecha_alta      | salario         |
++-----------------+-----------------+-----------------+-----------------+
+| Marta           | 41.00           | 2022-09-03      | 3100.00         |
+| Pablo           | 35.00           | 2024-11-30      | 2750.25         |
+| Ana             | 30.00           | 2023-02-14      | 2400.50         |
+| Luis            | 25.00           | 2023-05-20      | #N/A            |
++-----------------+-----------------+-----------------+-----------------+
+[df0: 4 filas, 4 columnas]:> filter edad gt 28
+…
+El dataframe ha sido filtrado por la columna 'edad' con el operador 'gt'.
+[df0: 3 filas, 4 columnas]:> quarter fecha_alta trimestre
+La columna 'trimestre' ha sido creada correctamente.
+[df0: 3 filas, 5 columnas]:> save salida.csv
+Dataframe guardado exitosamente en 'salida.csv'.
+[df0: 3 filas, 5 columnas]:> quit
+memoria liberada correctamente
+```
 
-- `quit`: Finaliza el programa.
-- `load <nombre_fichero>`: Carga un archivo CSV.
-- `meta`: Muestra los metadatos del dataframe activo.
-- `view [n]`: Muestra las primeras `n` filas del dataframe.
-- `sort <nombre_columna> [asc/des]`: Ordena las filas según la columna indicada.
-- `save <nombre_fichero>`: Guarda el dataframe en un archivo CSV.
-- `filter <nombre_columna> eq/neq/gt/lt <valor>`: Filtra las filas según la condición especificada.
-- `delnull <nombre_columna>`: Elimina filas con valores nulos en la columna indicada.
-- `delcolum <nombre_columna>`: Elimina la columna indicada.
-- `quarter <nombre_columna> <nombre_nueva_columna>`: Crea una nueva columna con el trimestre correspondiente a las fechas.
+## Arquitectura
 
----
+```mermaid
+flowchart TD
+    main["main.c<br/>inicializarPrograma() + ejecutarCicloComandos()"] --> loop["Bucle de comandos (lib.c)"]
+    loop --> handlers["manejarComando*()<br/>load · view · sort · filter · save · …"]
+    handlers --> ops["Operaciones sobre el dataframe activo<br/>cargarCSV · sortDataframe · filterDataframe · …"]
+    ops --> lista["Lista (lista enlazada de Nodo)"]
+    lista --> df["Dataframe<br/>columnas[] + indice[]"]
+    df --> col["Columna<br/>tipo + datos + esNulo[]"]
+```
 
-## Requisitos Generales
+- **`Lista` → `Nodo` → `Dataframe`**: varios dataframes cargados a la vez, uno activo.
+- **`Dataframe`**: array de `Columna` más un array `indice[]` con el orden de las filas visibles.
+- **`Columna`**: `datos` es un `void *` que apunta a `float[]` (numérico) o `char *[]` (texto y fecha), con un array paralelo `esNulo[]`.
 
-- **Gestión de Errores**:
-  - Mensajes de error en **rojo**.
-  - Mensajes de éxito en **verde**.
-- **Implementación en C**:
-  - El proyecto debe estar constituido por tres archivos:
-    - `main.c`
-    - `lib.h`
-    - `lib.c`
+## Decisiones técnicas
+
+- **Índice de filas en vez de mover datos.** `sort`, `filter` y `delnull` solo reescriben `indice[]`, sin copiar ni mover las columnas. Es barato, pero obliga a recordar el tamaño real de los arrays (`capacidad`).
+- **Datos almacenados por columnas** (estilo pandas), con un array de nulos paralelo en vez de un valor centinela.
+- **Tipos deducidos de la primera fila de datos**, para no recorrer el fichero dos veces.
+
+## Gestión de memoria
+
+Toda la memoria dinámica (columnas, cadenas, índices y la lista de dataframes) se libera al salir con `quit`. Comprobado con Valgrind sobre una sesión que usa `load`, `meta`, `view`, `sort`, `filter`, `quarter`, `prefix`, `delnull`, `delcolum`, `name`, `list` y `save`, además de rutas de error (fichero inexistente, comando desconocido):
+
+```text
+All heap blocks were freed -- no leaks are possible
+ERROR SUMMARY: 0 errors from 0 contexts
+```
+
+Para repetirlo: `valgrind --leak-check=full ./programa`.
+
+## Limitaciones y siguientes pasos
+
+- Interactivo: no hay modo por argumentos ni script. No hay tests automáticos (solo la comprobación manual descrita arriba); el CI solo compila.
+- CSV simple: separa por comas, sin soporte de campos entre comillas. Líneas de hasta 1024 caracteres y nombres de columna de hasta 29.
+- El filtro imprime trazas `[DEBUG]`, y `sort` imprime el índice. Convendría ocultarlas tras un modo verbose.
+- Pendiente: pruebas automáticas, `-Werror` en el CI y Valgrind en el CI.
+
+## Licencia
+
+[MIT](LICENSE) · Autor: Jamal Mencci · [LinkedIn](https://www.linkedin.com/in/jamal-mencci/)
