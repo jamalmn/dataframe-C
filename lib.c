@@ -10,6 +10,15 @@
 // *******************************************************
 Dataframe *dataframeActivo = NULL; // Puntero al dataframe activo
 int indiceDataframe = -1;          // Índice del dataframe activo
+static int modoVerbose = 0;        // 1: mostrar trazas de depuración (opción -v)
+
+// Imprime solo si el modo verbose está activo
+#define TRAZA(...) do { if (modoVerbose) printf(__VA_ARGS__); } while (0)
+
+void activarModoVerbose(void)
+{
+    modoVerbose = 1;
+}
 Lista listaDataframes = {0, NULL}; // Lista de dataframes en memoria
 
 // *******************************************************
@@ -1096,11 +1105,12 @@ void sortDataframe(Dataframe *df, const char *comando)
 
     // Mostrar índice inicial
     // printf("[DEBUG] Índice inicial: ");
-    for (int i = 0; i < df->numFilas; i++)
+    if (modoVerbose)
     {
-        printf("%d ", df->indice[i]);
+        for (int i = 0; i < df->numFilas; i++)
+            printf("%d ", df->indice[i]);
+        printf("\n");
     }
-    printf("\n");
 
     // Ordenar las filas utilizando el array 'indice'
     for (int i = 0; i < df->numFilas - 1; i++)
@@ -1159,11 +1169,12 @@ void sortDataframe(Dataframe *df, const char *comando)
 
     // Mostrar índice final
     // printf("[DEBUG] Índice final: ");
-    for (int i = 0; i < df->numFilas; i++)
+    if (modoVerbose)
     {
-        printf("%d ", df->indice[i]);
+        for (int i = 0; i < df->numFilas; i++)
+            printf("%d ", df->indice[i]);
+        printf("\n");
     }
-    printf("\n");
 
     printf("\033[0;32mEl dataframe ha sido ordenado por la columna '%s' en orden %s.\033[0m\n", nombreColumna, orden);
 }
@@ -1276,7 +1287,7 @@ void filterDataframe(Dataframe *df, const char *comando)
     TipoDato tipoColumna = columna->tipo;
 
     // Mensaje de depuración
-    printf("[DEBUG] Filtrando columna '%s' con operador '%s' y valor '%s'\n", nombreColumna, operador, valorStr);
+    TRAZA("[DEBUG] Filtrando columna '%s' con operador '%s' y valor '%s'\n", nombreColumna, operador, valorStr);
 
     // Filtrar filas según el tipo de columna
     int nuevaNumFilas = 0;
@@ -1290,7 +1301,7 @@ void filterDataframe(Dataframe *df, const char *comando)
         // Verificar valores nulos
         if (columna->esNulo[filaReal])
         {
-            printf("[DEBUG] Fila %d: Valor nulo, se descarta.\n", filaReal);
+            TRAZA("[DEBUG] Fila %d: Valor nulo, se descarta.\n", filaReal);
             continue;
         }
 
@@ -1298,7 +1309,7 @@ void filterDataframe(Dataframe *df, const char *comando)
         {
             float valorColumna = ((float *)columna->datos)[filaReal];
             float valorFiltro = atof(valorStr);
-            printf("[DEBUG] Fila %d: Comparando %g con %g\n", filaReal, valorColumna, valorFiltro);
+            TRAZA("[DEBUG] Fila %d: Comparando %g con %g\n", filaReal, valorColumna, valorFiltro);
 
             if ((strcmp(operador, "eq") == 0 && valorColumna == valorFiltro) ||
                 (strcmp(operador, "neq") == 0 && valorColumna != valorFiltro) ||
@@ -1311,7 +1322,7 @@ void filterDataframe(Dataframe *df, const char *comando)
         else if (tipoColumna == TEXTO)
         {
             char *valorColumna = ((char **)columna->datos)[filaReal];
-            printf("[DEBUG] Fila %d: Comparando '%s' con '%s'\n", filaReal, valorColumna, valorStr);
+            TRAZA("[DEBUG] Fila %d: Comparando '%s' con '%s'\n", filaReal, valorColumna, valorStr);
 
             if ((strcmp(operador, "eq") == 0 && strcmp(valorColumna, valorStr) == 0) ||
                 (strcmp(operador, "neq") == 0 && strcmp(valorColumna, valorStr) != 0))
@@ -1334,7 +1345,7 @@ void filterDataframe(Dataframe *df, const char *comando)
             struct tm fechaColumna;
             if (!parseFecha(valorColumna, &fechaColumna))
             {
-                printf("[DEBUG] Fila %d: Fecha inválida en la columna.\n", filaReal);
+                TRAZA("[DEBUG] Fila %d: Fecha inválida en la columna.\n", filaReal);
                 continue; // Salir si la fecha en la columna es inválida
             }
 
@@ -1352,12 +1363,12 @@ void filterDataframe(Dataframe *df, const char *comando)
 
         if (cumpleCondicion)
         {
-            printf("[DEBUG] Fila %d: Cumple la condición.\n", filaReal);
+            TRAZA("[DEBUG] Fila %d: Cumple la condición.\n", filaReal);
             nuevoIndice[nuevaNumFilas++] = filaReal; // Añadir al nuevo índice
         }
         else
         {
-            printf("[DEBUG] Fila %d: No cumple la condición.\n", filaReal);
+            TRAZA("[DEBUG] Fila %d: No cumple la condición.\n", filaReal);
         }
     }
 
@@ -1455,7 +1466,7 @@ void delColumn(Dataframe *df, const char *nombreColumna)
     }
 
     // Mensaje de depuración
-    printf("[DEBUG] Eliminando columna '%s'.\n", df->columnas[columnaIndex].nombre);
+    TRAZA("[DEBUG] Eliminando columna '%s'.\n", df->columnas[columnaIndex].nombre);
 
     // Liberar la memoria asociada a la columna
     liberarColumna(&df->columnas[columnaIndex]);

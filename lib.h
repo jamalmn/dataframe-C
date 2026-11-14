@@ -64,6 +64,7 @@ void manejarComandoList(); // Mostrar listado de dataframes cargados
 void manejarComandoPrefix(const char *argumento);
 void finalizarPrograma();                  // Liberar memoria y finalizar el programa
 void ejecutarCicloComandos();              // Ciclo principal para manejar comandos
+void activarModoVerbose(void);             // Mostrar trazas de depuración (opción -v)
 
 // *************** FUNCIONES AUXILIARES ***************
 char *strndup(const char *str, size_t n);
