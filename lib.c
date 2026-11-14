@@ -1296,9 +1296,9 @@ void filterDataframe(Dataframe *df, const char *comando)
 
         if (tipoColumna == NUMERICO)
         {
-            int valorColumna = ((int *)columna->datos)[filaReal];
-            int valorFiltro = atoi(valorStr);
-            printf("[DEBUG] Fila %d: Comparando %d con %d\n", filaReal, valorColumna, valorFiltro);
+            float valorColumna = ((float *)columna->datos)[filaReal];
+            float valorFiltro = atof(valorStr);
+            printf("[DEBUG] Fila %d: Comparando %g con %g\n", filaReal, valorColumna, valorFiltro);
 
             if ((strcmp(operador, "eq") == 0 && valorColumna == valorFiltro) ||
                 (strcmp(operador, "neq") == 0 && valorColumna != valorFiltro) ||
