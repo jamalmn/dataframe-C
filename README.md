@@ -19,6 +19,7 @@ Es un proyecto de aprendizaje: implementar a bajo nivel la estructura de datos y
 ```bash
 make          # genera el ejecutable ./programa
 ./programa    # abre la consola interactiva
+./programa -v # igual, mostrando además las trazas de depuración
 make clean    # borra los binarios
 ```
 
@@ -43,7 +44,7 @@ Formato de entrada: CSV con cabecera, separado por comas. El tipo de cada column
 
 ## Ejemplo de sesión
 
-Con el CSV de ejemplo [`ejemplos/empleados.csv`](ejemplos/empleados.csv) (datos ficticios). La salida real incluye colores ANSI y trazas `[DEBUG]` del filtro, que aquí se resumen con `…`:
+Con el CSV de ejemplo [`ejemplos/empleados.csv`](ejemplos/empleados.csv) (datos ficticios). La salida real incluye colores ANSI, que aquí se omiten:
 
 ```text
 [?]:> load ejemplos/empleados.csv
@@ -60,7 +61,6 @@ El dataframe ha sido ordenado por la columna 'salario' en orden des.
 | Luis            | 25.00           | 2023-05-20      | #N/A            |
 +-----------------+-----------------+-----------------+-----------------+
 [df0: 4 filas, 4 columnas]:> filter edad gt 28
-…
 El dataframe ha sido filtrado por la columna 'edad' con el operador 'gt'.
 [df0: 3 filas, 4 columnas]:> quarter fecha_alta trimestre
 La columna 'trimestre' ha sido creada correctamente.
@@ -107,7 +107,7 @@ Para repetirlo: `valgrind --leak-check=full ./programa`.
 
 - Interactivo: no hay modo por argumentos ni script. No hay tests automáticos (solo la comprobación manual descrita arriba); el CI solo compila.
 - CSV simple: separa por comas, sin soporte de campos entre comillas. Líneas de hasta 1024 caracteres y nombres de columna de hasta 29.
-- El filtro imprime trazas `[DEBUG]`, y `sort` imprime el índice. Convendría ocultarlas tras un modo verbose.
+- Las trazas de depuración (`[DEBUG]` del filtro e índice de `sort`) solo salen con `-v`.
 - Pendiente: pruebas automáticas, `-Werror` en el CI y Valgrind en el CI.
 
 ## Licencia
